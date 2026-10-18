@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Planning complete; code implementation pending. Track tasks using checked boxes **only after verification**.
+**Status:** Environment setup and an unexecuted connection notebook verified locally; warehouse implementation pending. Track tasks using checked boxes **only after verification**.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -13,12 +13,16 @@ The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI ag
 **Acceptance:** these documents exist in repository and links resolve; no claims of pipeline readiness.
 
 ## M1 — Reproducible environment + synthetic demo
-- [ ] Confirm Python 3.11+ setup; verify installation in a clean macOS virtual environment.
-- [ ] Pin validated package versions/lockfile after compatibility smoke tests.
+- [x] Confirm Python 3.11+ setup; verify installation in a clean macOS virtual environment.
+- [x] Pin validated package versions/lockfile after compatibility smoke tests.
 - [ ] Create dbt-duckdb project, profile example, .env.example, Makefile and local DuckDB database.
 - [ ] Build deterministic synthetic request snapshots, including a status reversion and agency reassignment.
 - [ ] Extend .gitignore for local DuckDB/WAL files, outputs, logs, dbt target, extracts.
 **Acceptance:** a new user can start the offline synthetic project without API tokens; repeat runs are deterministic.
+
+Environment slice verified on 2026-10-18: macOS ARM64, Python 3.13.5 in `.venv`; requirements installed; `pip check`, dbt CLI/duckdb adapter discovery, JupyterLab CLI, and in-memory DuckDB smoke test passed. Exact resolved versions are in `requirements-lock.txt`; full dbt execution and synthetic demo remain pending. The connection notebook passed schema/syntax validation, Ruff, and offline mocked DataFrame/error/retry checks. It preserves the user's broader date filter and all requested fields for an in-memory sample only, with a 1,000-row default limit and deterministic tie ordering. Live requests and live schema validation are deferred to the user's run; M2 items remain unchecked.
+
+Exploratory SQL slice verified on 2026-10-18: `run_sql_queries.ipynb` reuses the API notebook, registers its bounded DataFrame, and executes `create_311_service_request.sql` into `data/nyc_open_data.db`. The replaceable sample table includes `snapshot_at_utc` and `record_source`; it is outside the planned historical landing/Vault pipeline. Notebook schema/syntax and an offline mocked GET-to-DuckDB run passed from both repository and notebook directories, including persistence, replacement and failed-fetch stale-data protection. No live API call or project database write was performed during verification. M1/M2 warehouse milestones remain pending.
 
 ## M2 — Ingestion and staging
 - [ ] Validate live API field names against Socrata metadata.
