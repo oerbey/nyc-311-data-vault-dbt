@@ -70,6 +70,24 @@ Every original date has `<field>_time_status` (valid, missing, invalid_format, a
 
 Links hash the ordered parent hashes under domains `lnk_request_agency` and `lnk_request_problem`. Incomplete original keys remain visible with missing/eligibility flags; missing agency makes both Links ineligible, while missing problem suppresses only problem structures when the agency is known. Links mean ever observed, not currently active. Batch/capture evidence is retained in the assignment observation view; stored source/mode/load timestamps survive replay. No event-time reassignment or deactivation is inferred.
 
+## Implemented effectivity mapping
+
+`request_agency_link_hk` / `request_problem_link_hk` map to the corresponding
+Link effectivity Satellite's `link_hk`; successful eligible captures map
+`snapshot_at_utc` to timezone-aware `observed_from`. Each initial assignment
+produces `active_flag=true`; an explicit replacement produces previous-Link false
+and replacement-Link true. `batch_id` identifies that triggering replacement
+capture for both rows. Source/mode are retained and `load_dts_utc` records first
+warehouse insertion. Boolean hashdiffs encode a single lowercase text value
+`true`/`false` under domains `request_agency_effectivity` and
+`request_problem_effectivity` using unchanged SHA-256 v1.
+
+Missing fields, absent requests and failed/running batches produce no effectivity
+change. Agency and problem eligibility apply independently, so last-known problem
+can lag a newly observed agency when the category is missing. These are capture-time
+observations, not authoritative source assignment dates. No source event dates,
+agency names or descriptors determine relationship effectivity.
+
 ## Sample source parameters
 
 ```python

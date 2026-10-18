@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; agency/problem Hubs and request-assignment Links are also implemented; effectivity, remaining Satellites and dashboard remain pending.**
+**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; agency/problem Hubs and request-assignment Links are also implemented; assignment effectivity is implemented; remaining Satellites and dashboard remain pending.**
 
 ## Project documentation
 
@@ -25,6 +25,72 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
 
+## Observed assignment effectivity
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . \
+  --select +sat_lnk_request_agency_effectivity +sat_lnk_request_problem_effectivity
+```
+
+This adds `raw_vault.sat_lnk_request_agency_effectivity` and
+`raw_vault.sat_lnk_request_problem_effectivity`. Each stores insert-only events at
+`(link_hk, observed_from)` grain, with `request_hk`, `active_flag`, `hashdiff`,
+`batch_id`, `record_source`, `mode`, and first warehouse `load_dts_utc`.
+`observed_from` is the triggering capture's timezone-aware `snapshot_at_utc`,
+not a City-side assignment event time. Initial eligible evidence activates a Link.
+An explicit eligible replacement records old-Link `false` and new-Link `true`
+at that capture. A return reactivates the original Link with a new event;
+unchanged captures add nothing. Before first eligible evidence, assignment is unknown.
+
+Agency and problem histories are independent. Missing agency cannot change either;
+a known agency with a missing category can change agency effectivity while problem
+remains last-known. Such incomplete captures remain flagged in staging. Last-known
+problem and agency may therefore temporarily disagree; neither is a verified
+current assignment. Failed/running batches, empty captures, absent requests,
+and disappearance from an agency-filtered cohort never deactivate a Link.
+Only successful, eligible, explicit replacement evidence does so.
+
+Identical capture ties choose batch ID order initially; existing provenance and
+warehouse timestamps remain fixed if an earlier-sorting identical batch arrives.
+Deactivation lineage points to the replacement batch, not the original activation.
+The two staging event views compare adjacent eligible captures per request and
+produce the expected full retained timeline. Hashdiffs reuse SHA-256 v1 text
+encoding with a single canonical `true`/`false` string and separate domains
+`request_agency_effectivity` / `request_problem_effectivity`; existing hashes are unchanged.
+
+Full refresh is blocked and schema changes fail. Missing/inconsistent Link parents
+fail before insertion. Both effectivity models check already-stored history for
+both relationship types: safe additive late events append, while evidence requiring
+retraction or alteration of an existing event fails. Reconstruct such history in a
+separate database; no automated reconciliation is provided. Retain original landing
+evidence. Each dbt model commits independently, including dependency Hubs/Links;
+this command is not an atomic transaction over the graph.
+
+Inspect the fictional reassignment (false before true at a shared boundary):
+
+```sql
+select h.request_bk, a.agency_bk, e.observed_from, e.active_flag, e.batch_id
+from raw_vault.sat_lnk_request_agency_effectivity e
+join raw_vault.hub_request h using (request_hk)
+join raw_vault.lnk_request_agency l using (link_hk, request_hk)
+join raw_vault.hub_agency a using (agency_hk)
+where h.record_source = 'synthetic_311' and h.request_bk = 'DEMO-002'
+order by e.observed_from, e.active_flag;
+```
+
+The retained fixtures show DEP active February 1, DEP inactive February 2, and
+DSNY active February 2. February 3 adds no event. This is observed history, with
+no inferred transition time between captures. Business Vault intervals, assignment
+reporting, lifecycle/resolution/location/agency Satellites and PIT remain later work.
+
+Verification on 2026-10-18: all 124 Python tests (15 new effectivity tests) and Ruff
+passed. Builds in a copy and the project database passed 114 dbt data tests, deriving
+520 events per relationship type from retained source evidence. The six existing
+Vault tables were unchanged. Replay preserved effectivity rows, batch provenance
+and warehouse timestamps. Counts describe the current dataset, not permanent thresholds.
+
 ## Agency/problem identities and request Links
 
 From `nyc_311_requests`, after a landing load:
@@ -33,7 +99,7 @@ From `nyc_311_requests`, after a landing load:
 dbt build --profiles-dir . --select +lnk_request_agency +lnk_request_problem
 ```
 
-The leading `+` includes staging and all parent Hubs. This adds append-only `raw_vault.hub_agency`, `hub_problem`, `lnk_request_agency`, and `lnk_request_problem`. Each Link means its parent pair was **observed at least once**. It has no active flag or assignment event date. Returning to an earlier pair reuses the same Link; missing values and disappearance never deactivate it. Assignment effectivity is a later slice.
+The leading `+` includes staging and all parent Hubs. This adds append-only `raw_vault.hub_agency`, `hub_problem`, `lnk_request_agency`, and `lnk_request_problem`. Each Link means its parent pair was **observed at least once**. It has no active flag or assignment event date. Returning to an earlier pair reuses the same Link; missing values and disappearance never deactivate it. The effectivity Satellites above track observed activation and replacement.
 
 Agency identity is `(record_source, exact agency_bk)`; problem identity is `(record_source, exact agency_bk, complaint_type)`. The existing SHA-256 v1 contract uses domains `agency_hk` and `problem_hk`. Link hashes encode the ordered parent hashes `[request_hk, agency_hk]` / `[request_hk, problem_hk]` under domains `lnk_request_agency` / `lnk_request_problem`. The display business key `problem_bk` is `dv2:v1:problem_bk:2:` plus the existing canonical text encodings of agency and complaint type. Names/descriptors do not affect identity. Original case, whitespace, Unicode, delimiters and leading zeroes are retained; whitespace checks detect missing fields without normalizing valid keys. Existing request/status hash definitions are unchanged.
 

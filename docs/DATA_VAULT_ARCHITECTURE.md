@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Request/agency/problem Hubs, request-assignment Links and status Satellite implemented; effectivity and remaining Satellites remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Request/agency/problem Hubs, request-assignment Links and status Satellite implemented; assignment effectivity implemented; remaining Satellites remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -42,7 +42,7 @@ RAW VAULT -> BV_REQUEST_STATUS_INTERVALS -> PIT_REQUEST_STATUS_ASOF -> MART_HIST
 | `sat_lnk_request_agency_effectivity` | Link + observed effective version | link_hk, observed_from, active_flag, hashdiff, load_dts_utc, batch_id |
 | `sat_lnk_request_problem_effectivity` | Link + observed effective version | link_hk, observed_from, active_flag, hashdiff, load_dts_utc, batch_id |
 
-When a request is reassigned, preserve both Links and the observed active/inactive transitions. For a complete successfully captured **cohort**, disappearance or reassignment of a link can be distinguished from a partial extract; never infer deactivation from a failed/partial batch. A new link's first observation begins its effectivity, not the actual assignment timestamp.
+When a request is reassigned, preserve both Links and the observed active/inactive transitions. Only an explicit eligible replacement in a successful batch deactivates a previously observed Link. Disappearance, including from a complete filtered cohort, never establishes deactivation. A new link's first observation begins its effectivity, not the actual assignment timestamp.
 
 ### Satellites
 
@@ -78,6 +78,72 @@ Missing agency suppresses agency/problem identities and both Links for that obse
 
 Assignment models are append-only, block full refresh, fail schema changes and preserve warehouse metadata on replay. Each model commits independently. Project `indirect_selection: buildable` prevents partial upstream builds from selecting tests whose downstream assignment relations are outside the selection. Effectivity, descriptive Satellites and current-assignment reporting remain pending.
 
+## Implemented assignment effectivity (2026-10-18)
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . \
+  --select +sat_lnk_request_agency_effectivity +sat_lnk_request_problem_effectivity
+```
+
+This adds `raw_vault.sat_lnk_request_agency_effectivity` and
+`raw_vault.sat_lnk_request_problem_effectivity`. Each stores insert-only events at
+`(link_hk, observed_from)` grain, with `request_hk`, `active_flag`, `hashdiff`,
+`batch_id`, `record_source`, `mode`, and first warehouse `load_dts_utc`.
+`observed_from` is the triggering capture's timezone-aware `snapshot_at_utc`,
+not a City-side assignment event time. Initial eligible evidence activates a Link.
+An explicit eligible replacement records old-Link `false` and new-Link `true`
+at that capture. A return reactivates the original Link with a new event;
+unchanged captures add nothing. Before first eligible evidence, assignment is unknown.
+
+Agency and problem histories are independent. Missing agency cannot change either;
+a known agency with a missing category can change agency effectivity while problem
+remains last-known. Such incomplete captures remain flagged in staging. Last-known
+problem and agency may therefore temporarily disagree; neither is a verified
+current assignment. Failed/running batches, empty captures, absent requests,
+and disappearance from an agency-filtered cohort never deactivate a Link.
+Only successful, eligible, explicit replacement evidence does so.
+
+Identical capture ties choose batch ID order initially; existing provenance and
+warehouse timestamps remain fixed if an earlier-sorting identical batch arrives.
+Deactivation lineage points to the replacement batch, not the original activation.
+The two staging event views compare adjacent eligible captures per request and
+produce the expected full retained timeline. Hashdiffs reuse SHA-256 v1 text
+encoding with a single canonical `true`/`false` string and separate domains
+`request_agency_effectivity` / `request_problem_effectivity`; existing hashes are unchanged.
+
+Full refresh is blocked and schema changes fail. Missing/inconsistent Link parents
+fail before insertion. Both effectivity models check already-stored history for
+both relationship types: safe additive late events append, while evidence requiring
+retraction or alteration of an existing event fails. Reconstruct such history in a
+separate database; no automated reconciliation is provided. Retain original landing
+evidence. Each dbt model commits independently, including dependency Hubs/Links;
+this command is not an atomic transaction over the graph.
+
+Inspect the fictional reassignment (false before true at a shared boundary):
+
+```sql
+select h.request_bk, a.agency_bk, e.observed_from, e.active_flag, e.batch_id
+from raw_vault.sat_lnk_request_agency_effectivity e
+join raw_vault.hub_request h using (request_hk)
+join raw_vault.lnk_request_agency l using (link_hk, request_hk)
+join raw_vault.hub_agency a using (agency_hk)
+where h.record_source = 'synthetic_311' and h.request_bk = 'DEMO-002'
+order by e.observed_from, e.active_flag;
+```
+
+The retained fixtures show DEP active February 1, DEP inactive February 2, and
+DSNY active February 2. February 3 adds no event. This is observed history, with
+no inferred transition time between captures. Business Vault intervals, assignment
+reporting, lifecycle/resolution/location/agency Satellites and PIT remain later work.
+
+Verification on 2026-10-18: all 124 Python tests (15 new effectivity tests) and Ruff
+passed. Builds in a copy and the project database passed 114 dbt data tests, deriving
+520 events per relationship type from retained source evidence. The six existing
+Vault tables were unchanged. Replay preserved effectivity rows, batch provenance
+and warehouse timestamps. Counts describe the current dataset, not permanent thresholds.
+
 ## Business Vault examples
 
 ```sql
@@ -106,7 +172,7 @@ As-of validity uses `observed_from <= as_of_ts AND (as_of_ts < next_observed_fro
 - Replaying unchanged records inserts no extra versions.
 - Late-arriving capture reorders historical intervals and PIT.
 - As-of boundary and before-first-snapshot expectations.
-- Reassignment creates new link and deactivates prior link when a **complete** snapshot proves it.
+- Reassignment creates new link and deactivates prior link when successful eligible evidence explicitly identifies a replacement.
 - Null/invalid date handling; DST cases; zero-length/negative closure interval quarantine.
 - Row-count reconciliation, grouping without fan-out, and source cohort definition reported in marts.
 

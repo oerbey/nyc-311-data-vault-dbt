@@ -1,0 +1,66 @@
+version: 2
+models:
+- name: sat_lnk_request_agency_effectivity
+  description: 'Insert-only observed activation/deactivation events. Only an explicit
+    eligible replacement deactivates a Link; absence and incomplete captures do not.
+    Grain: link_hk + observed_from.'
+  columns:
+  - name: link_hk
+    data_tests:
+    - not_null
+  - name: request_hk
+    data_tests:
+    - not_null
+  - name: observed_from
+    data_tests:
+    - not_null
+  - name: active_flag
+    data_tests:
+    - not_null
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+- name: sat_lnk_request_problem_effectivity
+  description: 'Insert-only observed activation/deactivation events. Only an explicit
+    eligible replacement deactivates a Link; absence and incomplete captures do not.
+    Grain: link_hk + observed_from.'
+  columns:
+  - name: link_hk
+    data_tests:
+    - not_null
+  - name: request_hk
+    data_tests:
+    - not_null
+  - name: observed_from
+    data_tests:
+    - not_null
+  - name: active_flag
+    data_tests:
+    - not_null
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
