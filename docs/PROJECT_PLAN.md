@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Architecture and milestones drafted; implementation not started.  
+**Status:** Offline and bounded live landing implemented and verified; staging and downstream warehouse layers remain pending.
 **Updated:** 2026-10-18  
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -96,6 +96,22 @@ Use properly URL-encoded parameters; pagination with stable ordering, retries/ba
 For the MVP, **re-query the complete bounded cohort** on each daily run. Use the full landing snapshot to detect real changes; optionally optimize later with reconciliation rules. Avoid resetting `load_dts` on a no-op replay.
 
 **Repeatability:** the identical batch replay is idempotent, and daily unchanged request rows should not create new Raw Vault status versions. A new status that equals an older *non-adjacent* status (open→closed→open) **is** a new version.
+
+### Implemented offline landing decisions (2026-10-18)
+
+The Python loader supplies three deterministic fictional batches to the two landing tables. Source values remain text/null, including raw source timestamps; no event-time conversion or Vault load timestamp is assigned. Synthetic observations use `synthetic_311` provenance and no detailed addresses or coordinates. The audit table additionally stores `record_source` so replay checks include provenance. All duplicate keys within a batch are rejected, including identical duplicates. Unknown fields and non-text values are rejected instead of silently dropped or coerced.
+
+A running audit is persisted before loading; snapshot inserts and the success audit update are atomic. Failed validation/insertion leaves a failed audit and no committed snapshots. Accepted rows count committed rows; rejected rows count structurally invalid input records. Invalid batch metadata is rejected before audit creation. Empty supplied batches are valid zero-row observations; live extraction completeness checks are still pending. Successful identical replay is a no-op based on canonical source checksum plus source/filter/capture metadata. Failed or interrupted IDs require new IDs for retry; automatic checkpoint recovery is deferred. Fixed fixture batch IDs/timestamps make the demo repeatable, while actual audit start/end times record real loader execution.
+
+Only the offline landing portion of M2 is complete. Live pagination, reconciliation, staging, and Vault logic remain pending. No historical/source timestamp semantics or Hub/Link grains have changed.
+
+### Implemented live landing decisions (2026-10-18)
+
+The live adapter validates the 15 landing fields/types against Socrata metadata before reading records. Defaults retain the January–June 2026 DEP/DSNY cohort, with configurable dates/agencies, 5,000-row pages and a 500,000-row guard. Count-only preflight is read-only. A complete one-day verification captured 515 rows; the full default cohort was counted (302,762 rows) but not downloaded. Requests preserve raw source strings and exclude detailed addresses/coordinates.
+
+Live batches begin auditing before network access, checkpoint diagnostics after successful page responses, and reuse the offline loader's atomic snapshot writer. Two nullable audit columns, `expected_rows_before` and `expected_rows_after`, are added automatically to existing databases. Both counts must equal fetched rows before success. Page count includes the empty terminal response, excluding metadata/count requests and retries. A new UUID identifies every live observation; used live IDs are rejected before networking and cannot be resumed. Offline fixture replay remains idempotent.
+
+Capture start is `started_at_utc`, capture/reconciliation end is `snapshot_at_utc`, and publication end is `finished_at_utc`; running batches have a provisional snapshot timestamp. Failed extracts retain no published snapshots. Count agreement and duplicate checks do not make a multi-page pull transactional or detect every same-count source change. Agency-filtered membership may change; disappearance cannot establish deletion or a new assignment outside the selected agencies. Scheduling, tracked-ID follow-up, resumable extraction, staging and Vault loading remain later work. No Hub/Link grain or source-event semantics changed.
 
 ## 6. Data Vault 2.0 modeling contract
 

@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Environment setup and an unexecuted connection notebook verified locally; warehouse implementation pending. Track tasks using checked boxes **only after verification**.
+**Status:** Offline and bounded live landing verified; staging and Vault implementation remain pending. Track tasks using checked boxes **only after verification**.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -16,8 +16,8 @@ The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI ag
 - [x] Confirm Python 3.11+ setup; verify installation in a clean macOS virtual environment.
 - [x] Pin validated package versions/lockfile after compatibility smoke tests.
 - [ ] Create dbt-duckdb project, profile example, .env.example, Makefile and local DuckDB database.
-- [ ] Build deterministic synthetic request snapshots, including a status reversion and agency reassignment.
-- [ ] Extend .gitignore for local DuckDB/WAL files, outputs, logs, dbt target, extracts.
+- [x] Build deterministic synthetic request snapshots, including a status reversion and agency reassignment.
+- [x] Extend .gitignore for local DuckDB/WAL files, outputs, logs, dbt target, extracts (notebook outputs must still be cleared before commit).
 **Acceptance:** a new user can start the offline synthetic project without API tokens; repeat runs are deterministic.
 
 Environment slice verified on 2026-10-18: macOS ARM64, Python 3.13.5 in `.venv`; requirements installed; `pip check`, dbt CLI/duckdb adapter discovery, JupyterLab CLI, and in-memory DuckDB smoke test passed. Exact resolved versions are in `requirements-lock.txt`; full dbt execution and synthetic demo remain pending. The connection notebook passed schema/syntax validation, Ruff, and offline mocked DataFrame/error/retry checks. It preserves the user's broader date filter and all requested fields for an in-memory sample only, with a 1,000-row default limit and deterministic tie ordering. Live requests and live schema validation are deferred to the user's run; M2 items remain unchecked.
@@ -25,13 +25,20 @@ Environment slice verified on 2026-10-18: macOS ARM64, Python 3.13.5 in `.venv`;
 Exploratory SQL slice verified on 2026-10-18: `run_sql_queries.ipynb` reuses the API notebook, registers its bounded DataFrame, and executes `create_311_service_request.sql` into `data/nyc_open_data.db`. The replaceable sample table includes `snapshot_at_utc` and `record_source`; it is outside the planned historical landing/Vault pipeline. Notebook schema/syntax and an offline mocked GET-to-DuckDB run passed from both repository and notebook directories, including persistence, replacement and failed-fetch stale-data protection. No live API call or project database write was performed during verification. M1/M2 warehouse milestones remain pending.
 
 ## M2 — Ingestion and staging
-- [ ] Validate live API field names against Socrata metadata.
-- [ ] Implement an optional `SOCRATA_APP_TOKEN`-aware client and pagination.
-- [ ] Define source cohort and full-cohort daily refresh.
-- [ ] Build batch audit, row validation, per-batch de-duplication, checkpointing and page-count reconciliation.
+- [x] Implement offline landing schema, transactional batch audit, immutable observations, and replay protection.
+- [x] Declare dbt landing sources and provide an offline walkthrough with verified synthetic history.
+- [x] Validate live API field names against Socrata metadata (all 15 landing fields/types confirmed).
+- [x] Implement an optional `SOCRATA_APP_TOKEN`-aware client and pagination.
+- [x] Define a configurable bounded cohort and a repeatable full-cohort refresh command (manual execution; scheduling remains future work).
+- [x] Extend live batch audit with diagnostic progress checkpoints, duplicate rejection, count reconciliation and atomic publication.
+- [ ] Implement resumable extraction/checkpoint recovery if required; failed/interrupted batches currently restart under new IDs.
 - [ ] Implement dbt staging and reusable canonical SHA-256 macros.
 - [ ] Test nulls, malformed source dates, distinct and duplicate keys.
 **Acceptance:** bounded source extracts or synthetic batches are reproducible; every loaded row has provenance and a capture timestamp; no silent partial batches.
+
+Offline landing slice verified on 2026-10-18: 27 Python checks passed against temporary databases, including replay immutability, source preservation, injected partial-insert rollback, existing-table preservation, CLI execution, and notebook execution from root/notebook directories with network connections blocked. Ruff passed for ingestion, tests and notebook cells. dbt 1.11.16 / duckdb adapter 1.10.1 recognized two landing sources and passed all nine source tests against a temporary synthetic database. The existing unused `models.nyc_311_requests.example` configuration produces a warning in the isolated dbt check. The landing contract adds audit `record_source` for provenance-aware replay. Failed/running IDs require new IDs; automatic checkpoint recovery, API page reconciliation and live schema validation remain unimplemented, so the broader M2 audit task remains unchecked.
+
+Live landing slice verified on 2026-10-18: all 15 source fields/types matched live metadata. Count-only returned 302,762 rows for the planned January–June DEP/DSNY scope and 515 for January 1. A complete one-day extract passed multi-page retrieval and before/fetched/after reconciliation with 515 committed rows. The full six-month extraction was not run. Sixty-nine Python tests passed offline, including schema drift, retries/rate limits, malformed responses, duplicate keys, changing counts, size guards, transaction rollback, existing-data preservation, CLI dispatch and the offline walkthrough. Ruff passed. All eleven dbt source and publication/count checks passed against the verified live extraction. API validation and pagination are implemented; staging and Vault modeling remain pending. No scheduler or automatic resume is implemented.
 
 ## M3 — Raw Vault
 - [ ] Implement hub_request, hub_agency, hub_problem.

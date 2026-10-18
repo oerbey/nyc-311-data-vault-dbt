@@ -218,3 +218,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local warehouse, source extracts, and dbt runtime artifacts
+/data/
+*.duckdb
+*.duckdb.wal
+*.db
+*.db.wal
+/extracts/
+**/dbt_packages/
+**/logs/
+nyc_311_requests/.user.yml
+.env.*
+!.env.example
+.DS_Store
