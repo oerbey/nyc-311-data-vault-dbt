@@ -1,0 +1,28 @@
+# Instructions for AI Coding Agents
+
+Read **[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)**, **[docs/DATA_VAULT_ARCHITECTURE.md](docs/DATA_VAULT_ARCHITECTURE.md)**, **[docs/SOURCE_DATA_DICTIONARY.md](docs/SOURCE_DATA_DICTIONARY.md)**, and **[docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md)** before editing code.
+
+## Scope
+Build an NYC 311 historical **service analytics** warehouse using Python, dbt Core, DuckDB and Data Vault 2.0, with an **offline synthetic demo** as the reproducibility baseline. The primary NYC API is `https://data.cityofnewyork.us/resource/erm2-nwe9.json`.
+
+## Historical correctness rules
+- NYC 311 is a current-state request feed, **not** a historical log of every status change.
+- Source `created_date`, `closed_date`, `due_date` and `resolution_action_updated_date` have different semantics. In particular `due_date` is for an agency update, not a universal closure SLA.
+- Preserve `snapshot_at_utc` (when we observed the record) separately from `load_dts_utc` (when Vault first loaded this version). Historical observed status is **unknown before first snapshot**.
+- Hubs and Links are identity/relationship structures. Raw Vault Satellites and Link effectivity records are insert-only. Detect *adjacent* changes and status reversals rather than deduplicating all equal historical values.
+- Explicitly distinguish event-date trends from snapshot-as-of backlog. Don't claim full retrospective status history or intraday source-change timestamps.
+- Treat reassignment as a relationship-history problem. A partial/failed snapshot is not evidence a relationship ended.
+- Persist stable deterministic SHA-256 business keys and null-safe hashdiffs; ensure idempotent replay.
+
+## Engineering workflow
+1. Check actual repo files (planned structure isn't implemented yet).
+2. Pick an unchecked milestone in the roadmap; state what it completes.
+3. Develop in small slices from synthetic fixture to ingestion/staging, Raw Vault, PIT, marts, tests.
+4. Run available tests, report pass/fail honestly and update docs only after verification.
+5. Document deviations to business key composition, granularity, time interpretation and historization.
+6. Do not commit tokens, environment files, DuckDB files, source extracts, generated dbt artifacts or unnecessarily precise location/person data.
+7. Keep GitHub Actions demo network-free; public Socrata API is optional for real mode. Maintain conservative retry, pagination and record reconciliation in source adapter.
+8. Avoid changing unrelated files; keep commits reviewable.
+
+## First coding task
+Implement **M1**: Python/dbt/DuckDB scaffold, minimal fixture generator and tests. `requirements.txt` contains initial version ranges; validate versions before declaring the environment working.
