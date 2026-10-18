@@ -64,6 +64,12 @@ Every original date has `<field>_time_status` (valid, missing, invalid_format, a
 
 `request_hk` hashes [record_source, original request_bk] under domain `request_hk`; this isolates synthetic and live source namespaces. `hashdiff` hashes only the exact source `status` under domain `request_status`. V1 canonical text preserves NULL/empty/case/whitespace/Unicode distinctions with UTF-8 byte lengths. `sat_request_status` stores observed transitions by capture time, raw status, batch/source/mode provenance and independent first-load warehouse timestamps. Same-time conflicting states are rejected. No historical status is inferred before the first observation; no source event dates participate in the status hashdiff or observed ordering.
 
+## Implemented assignment mapping
+
+`agency_bk` and `complaint_type` remain exact source text. The agency hash uses `[record_source, agency_bk]`; the problem hash uses `[record_source, agency_bk, complaint_type]`. Domains are `agency_hk` and `problem_hk`. `problem_bk` stores the existing v1 canonical text encoding of the two raw components with prefix `dv2:v1:problem_bk:2:`. Agency names and descriptors do not define identity.
+
+Links hash the ordered parent hashes under domains `lnk_request_agency` and `lnk_request_problem`. Incomplete original keys remain visible with missing/eligibility flags; missing agency makes both Links ineligible, while missing problem suppresses only problem structures when the agency is known. Links mean ever observed, not currently active. Batch/capture evidence is retained in the assignment observation view; stored source/mode/load timestamps survive replay. No event-time reassignment or deactivation is inferred.
+
 ## Sample source parameters
 
 ```python

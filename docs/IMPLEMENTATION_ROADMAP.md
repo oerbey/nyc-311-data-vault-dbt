@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Landing, typed staging and the first request/status Raw Vault slice verified; remaining Vault structures are pending. Track tasks using checked boxes **only after verification**.
+**Status:** Landing, staging, request/agency/problem Hubs, assignment Links and status Satellite verified; effectivity and remaining Satellites are pending. Track tasks using checked boxes **only after verification**.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -45,17 +45,20 @@ Staging slice verified on 2026-10-18: `staging.stg_311_request_snapshots` is a v
 
 ## M3 — Raw Vault
 - [x] Implement source-scoped `hub_request`.
-- [ ] Implement hub_agency and hub_problem.
-- [ ] Implement lnk_request_agency, lnk_request_problem.
+- [x] Implement source-scoped hub_agency and hub_problem with exact-text canonical keys.
+- [x] Implement append-only lnk_request_agency and lnk_request_problem for eligible ever-observed pairs.
 - [x] Implement insert-only `sat_request_status` using adjacent capture changes and replay-safe first-load timestamps.
 - [ ] Implement lifecycle/resolution/location/agency Satellites and effectivity for changing Links.
 - [x] Verify request/status replay, reversals, NULL transitions, safe late arrivals, conflicting captures and full-refresh protection.
-- [ ] Verify relationship-history changes after Link/effectivity implementation.
+- [x] Verify Link identity under reassignment, return, late evidence, incomplete keys and replay.
+- [ ] Verify activation/deactivation history after effectivity implementation.
 - [x] Add request/status relationships, uniqueness, provenance, canonical hash and expected change-history tests.
 - [ ] Extend tests to remaining Vault models.
 **Acceptance:** no existing business keys or unmodified Satellites duplicate on replay; changed relationships and states remain historically reconstructible.
 
 Request/status slice verified on 2026-10-18: 12 new offline integration tests independently reproduce UTF-8 SHA-256 encoding, isolate synthetic/live request identities, preserve leading zeroes and NULL/empty distinctions, retain Open → Closed → Open, keep original warehouse timestamps/provenance on replay, append safe late boundaries, and reject ties/backfills/full-refresh operations requiring historical mutation. The dependency build passes all 58 dbt data tests against a copy of the current database. The current data produces 518 request Hub identities and 520 status versions. Only the first M3 slice is complete; other Hubs/Links/Satellites, effectivity and M4 remain pending. Backfills requiring retraction need a separately validated reconstruction, not an in-place update.
+
+Assignment Hub/Link slice verified on 2026-10-18: the observation view preserves successful rows and flags incomplete keys without fabricating unknown identities. Hubs/Links retain exact source text, namespaces and first-load metadata. New checks cover canonical hashes, identity/parent grain, eligible-source coverage, observation provenance, capture conflicts and parent namespaces. All 109 Python tests, including 12 assignment integration cases, and Ruff passed. A copied-database build passed 94 selected dbt tests and matched 4 agencies, 31 problems, and 519 Links per type; existing request/status rows remained unchanged. Project test selection is now buildable so status-only and staging-only commands work without unbuilt assignment relations. Full refresh is blocked. Effectivity and descriptive Satellites remain pending.
 
 ## M4 — Business Vault / temporal semantics
 - [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.

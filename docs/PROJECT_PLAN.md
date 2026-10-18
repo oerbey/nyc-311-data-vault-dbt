@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing, typed staging, canonical hashing, request Hub and status Satellite implemented; other Vault structures and analytics remain pending.
+**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; effectivity, remaining Satellites and analytics remain pending.
 **Updated:** 2026-10-18  
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -127,8 +127,8 @@ See [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) for full grain, key
 
 ### Hubs
 - **`hub_request`**: identity (`record_source`, `unique_key`) with original source text preserved in `request_bk`; the source namespace separates synthetic/live records.
-- **`hub_agency`**: business key `agency`.
-- **`hub_problem`**: scoped taxonomy key (`agency`, `complaint_type`), because the source says problem categories are defined by responding agencies. Key composition is an explicit project design decision.
+- **`hub_agency`**: identity (`record_source`, exact `agency`).
+- **`hub_problem`**: scoped taxonomy key (`record_source`, exact `agency`, exact `complaint_type`), because the source says problem categories are defined by responding agencies. Key composition is an explicit project design decision.
 
 ### Links
 - **`lnk_request_agency`**: relationship of request to agency.
@@ -149,6 +149,14 @@ Every Hub/Link has `load_dts_utc` and `record_source`. Business/hash keys are ca
 Canonical SHA-256 v1 uses domain/arity prefixes and null-aware UTF-8 byte-length text encoding. The request hash includes `record_source` and exact `request_bk`; status hashdiff includes only exact raw status. Empty, NULL, whitespace, case, leading-zero and Unicode distinctions are preserved. This source-scoped request identity is an explicit refinement to the original single-field key proposal, avoiding synthetic/live collisions.
 
 `hub_request` and `sat_request_status` are append-only incremental models. Warehouse `load_dts_utc` records first insertion and never resets on replay. Adjacent observations determine status boundaries; reversals and NULL transitions survive. Identical same-time captures coalesce, while conflicting same-time values fail. Safe late observations append; a late observation requiring removal/rewrite of an existing boundary fails before either model mutates. Full refresh is blocked. Reconstruct/reconcile invalidated history in a separate database; no automated retraction or promotion exists. Each dbt model commits separately. Current data produces 518 Hub identities and 520 status versions; the broader Vault and PIT remain pending.
+
+### Implemented assignment Hub/Link slice (2026-10-18)
+
+Agency/problem Hubs extend source namespacing to agency codes and agency/category tuples, preserving exact source strings and the existing SHA-256 v1 encoding. Link identities hash the ordered request/agency or request/problem parent hashes. `problem_bk` canonically encodes agency/category using prefix `dv2:v1:problem_bk:2:`. No existing request/status hash or warehouse metadata is migrated.
+
+An observation view retains all successful records and exposes missing/eligibility flags. Missing agency omits both relationship types; missing category with a known agency omits only the problem identity/Link. No unknown members are created. Same-time conflicting eligible relationships fail preflight, and Links fail if parent identities are absent or provenance differs. Models append unseen identities/pairs and preserve first-load metadata on replay. Full refresh is blocked; schema changes fail. Earlier evidence can append an ever-observed relationship but cannot imply deactivation. Capture/batch provenance is retained in the input view, while Hub/Link rows store source/mode and warehouse load time.
+
+The current eligible input derives 4 agency identities, 31 problem identities, and 519 Links per relationship type. Counts are validated against source tuples, not permanent thresholds. Partial dbt builds use `indirect_selection: buildable` to avoid tests on unbuilt downstream relations. Each model commits independently; effectivity and current-assignment interpretation remain future work. No API extraction was added.
 
 ## 7. Business Vault and marts
 

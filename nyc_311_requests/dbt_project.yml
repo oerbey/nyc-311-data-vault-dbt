@@ -34,3 +34,7 @@ models:
     # Config indicated by + and applies to all files under models/example/
     example:
       +materialized: view
+
+# Run relationship tests only when their required models are selected/buildable.
+flags:
+  indirect_selection: buildable

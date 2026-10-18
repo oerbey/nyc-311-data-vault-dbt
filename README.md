@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; the remaining Vault structures and dashboard remain pending.**
+**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; agency/problem Hubs and request-assignment Links are also implemented; effectivity, remaining Satellites and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,34 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+## Agency/problem identities and request Links
+
+From `nyc_311_requests`, after a landing load:
+
+```bash
+dbt build --profiles-dir . --select +lnk_request_agency +lnk_request_problem
+```
+
+The leading `+` includes staging and all parent Hubs. This adds append-only `raw_vault.hub_agency`, `hub_problem`, `lnk_request_agency`, and `lnk_request_problem`. Each Link means its parent pair was **observed at least once**. It has no active flag or assignment event date. Returning to an earlier pair reuses the same Link; missing values and disappearance never deactivate it. Assignment effectivity is a later slice.
+
+Agency identity is `(record_source, exact agency_bk)`; problem identity is `(record_source, exact agency_bk, complaint_type)`. The existing SHA-256 v1 contract uses domains `agency_hk` and `problem_hk`. Link hashes encode the ordered parent hashes `[request_hk, agency_hk]` / `[request_hk, problem_hk]` under domains `lnk_request_agency` / `lnk_request_problem`. The display business key `problem_bk` is `dv2:v1:problem_bk:2:` plus the existing canonical text encodings of agency and complaint type. Names/descriptors do not affect identity. Original case, whitespace, Unicode, delimiters and leading zeroes are retained; whitespace checks detect missing fields without normalizing valid keys. Existing request/status hash definitions are unchanged.
+
+`staging.int_request_assignment_observations` retains every successful observation with batch/capture/source/filter provenance and eligibility flags. `has_missing_agency` and `has_missing_problem` independently describe the original fields. Missing agency makes both relationship types ineligible. A valid agency with a missing problem still contributes the agency Hub/Link. Missing problem values contribute no problem Hub/Link. Ineligible hashes/business-key encodings are NULL; no unknown members are fabricated. Inspect incomplete records with:
+
+```sql
+select batch_id, request_bk, agency_bk, complaint_type,
+       has_missing_agency, has_missing_problem,
+       is_agency_link_eligible, is_problem_link_eligible
+from staging.int_request_assignment_observations
+where has_missing_agency or has_missing_problem;
+```
+
+Every assignment model checks the full retained input for conflicting eligible agency/problem assignments at the same request/capture instant before inserting. Identical ties coalesce, while incomplete ties remain visible and do not invent an alternative assignment. Each Link also checks parent coverage and consistent source/mode metadata; missing parents fail rather than silently losing relationships. Full refresh is blocked and schema changes fail. New identities/pairs are chosen by capture time then batch ID on first load; their source/mode and warehouse load timestamps never reset on replay. Batch/capture lineage remains in the observation view. Earlier evidence can add a previously unseen pair without removing an existing one. Individual dbt models commit independently.
+
+The project uses `flags.indirect_selection: buildable` so partial commands such as the existing status-only build do not run relationship tests against assignment models outside that build. Directly selecting a test still requires its relations to exist. All new models use the existing literal schemas and database.
+
+Verification covers reassignment and return, incomplete keys and ties, exact/Unicode key encoding, namespaces, name/descriptor changes, safe late relationship evidence, replay, missing parents and refresh protection. All 109 Python tests (including 12 assignment integration cases) and Ruff passed. A build against the current database copy passed 94 selected dbt tests and matched eligible source tuples: **4 agencies, 31 problems, 519 agency Links, 519 problem Links**. Existing request/status rows and first-load metadata were unchanged. No API extraction or automatic assignment deactivation is performed by this slice.
 
 ## Request identity and status Raw Vault
 

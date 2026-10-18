@@ -1,0 +1,144 @@
+version: 2
+models:
+- name: hub_agency
+  description: Insert-only source-scoped identity from complete assignment keys. Exact
+    text is retained.
+  columns:
+  - name: agency_hk
+    data_tests:
+    - unique
+    - not_null
+  - name: agency_bk
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+- name: lnk_request_agency
+  description: One observed-at-least-once parent pair; no active flag, assignment
+    event date, or inferred deactivation. First-load metadata survives replay.
+  columns:
+  - name: link_hk
+    data_tests:
+    - unique
+    - not_null
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: agency_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_agency')
+          field: agency_hk
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+- name: hub_problem
+  description: Insert-only source-scoped identity from complete assignment keys. Exact
+    text is retained.
+  columns:
+  - name: problem_hk
+    data_tests:
+    - unique
+    - not_null
+  - name: agency_bk
+    data_tests:
+    - not_null
+  - name: complaint_type
+    data_tests:
+    - not_null
+  - name: problem_bk
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+- name: lnk_request_problem
+  description: One observed-at-least-once parent pair; no active flag, assignment
+    event date, or inferred deactivation. First-load metadata survives replay.
+  columns:
+  - name: link_hk
+    data_tests:
+    - unique
+    - not_null
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: problem_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_problem')
+          field: problem_hk
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+- name: int_request_assignment_observations
+  description: All successful observations with original fields, hashes and eligibility
+    flags. Incomplete keys are visible; no unknown members are fabricated.
+  columns:
+  - name: batch_id
+    data_tests:
+    - not_null
+  - name: snapshot_at_utc
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: request_bk
+    data_tests:
+    - not_null
+  - name: request_hk
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: has_missing_agency
+    data_tests:
+    - not_null
+  - name: has_missing_problem
+    data_tests:
+    - not_null
+  - name: is_agency_link_eligible
+    data_tests:
+    - not_null
+  - name: is_problem_link_eligible
+    data_tests:
+    - not_null
