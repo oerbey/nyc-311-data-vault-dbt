@@ -1,0 +1,7 @@
+nyc_311_requests:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/nyc_open_data.db
+      threads: 4

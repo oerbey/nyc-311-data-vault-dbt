@@ -1,0 +1,54 @@
+version: 2
+
+sources:
+  - name: landing
+    schema: landing
+    description: >-
+      Python-owned immutable observations and batch audit. Downstream models must
+      join request_snapshots to ingestion_batch on batch_id and filter status = 'success'.
+      Synthetic observations are fictional and must remain distinguishable by mode
+      and record_source. Source date strings are not UTC pipeline timestamps.
+    tables:
+      - name: ingestion_batch
+        description: >-
+          One extraction batch. Status is running, success, or failed. Accepted rows
+          are committed observations; rejected rows count invalid input records.
+          Failed or running batch IDs require a new ID for retry. Offline batches
+          have page_count = 0; live page_count includes the terminal empty response,
+          excluding metadata/count requests and failed HTTP attempts. Live audit
+          starts before networking and records both reconciliation counts. Used live
+          IDs are never re-fetched or resumed. record_source participates in replay identity.
+        columns:
+          - name: batch_id
+            data_tests: [unique, not_null]
+          - name: expected_rows_before
+            description: API count before pagination; null for offline and early failed captures.
+          - name: expected_rows_after
+            description: API count after pagination; must match fetched/accepted rows for live success.
+          - name: status
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: [running, success, failed]
+      - name: request_snapshots
+        description: >-
+          One request observed in one batch. Composite key (batch_id, unique_key).
+          Unchanged observations are retained across batches. Only committed
+          successful batches are published by the loader. Observed status history
+          begins with the first capture; snapshots are not source event logs.
+        columns:
+          - name: batch_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('landing', 'ingestion_batch')
+                    field: batch_id
+          - name: unique_key
+            data_tests: [not_null]
+          - name: snapshot_at_utc
+            description: UTC observation time; distinct from source dates and Vault load time.
+            data_tests: [not_null]
+          - name: record_source
+            data_tests: [not_null]

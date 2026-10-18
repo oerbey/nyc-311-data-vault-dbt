@@ -24,5 +24,7 @@ Build an NYC 311 historical **service analytics** warehouse using Python, dbt Co
 7. Keep GitHub Actions demo network-free; public Socrata API is optional for real mode. Maintain conservative retry, pagination and record reconciliation in source adapter.
 8. Avoid changing unrelated files; keep commits reviewable.
 
-## First coding task
-Implement **M1**: Python/dbt/DuckDB scaffold, minimal fixture generator and tests. `requirements.txt` contains initial version ranges; validate versions before declaring the environment working.
+## Current implementation boundary
+Offline and bounded live landing are implemented in `ingestion`. Live runs validate schema, paginate/reconcile counts, and publish through the shared transactional landing writer. Running/failed live IDs are never resumed; progress checkpoints are diagnostic only. Audit `expected_rows_before` and `expected_rows_after` are additive nullable columns. Source event dates remain strings. Network-free tests and the synthetic demo must remain runnable without credentials.
+
+The next warehouse slice is **M2 staging**: typed fields and validation before Vault models. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.

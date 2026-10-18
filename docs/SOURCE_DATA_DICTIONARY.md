@@ -37,6 +37,10 @@
 
 **Review source metadata before coding:** Field optionality, descriptions, and schema may change. Validate the live Socrata schema in M2 and document differences. The Excel dictionary is a reference, not the extracted records.
 
+## Live landing validation (2026-10-18)
+
+The API metadata at `/api/views/erm2-nwe9.json` confirmed all 15 planned landing fields. `created_date`, `closed_date`, `due_date` and `resolution_action_updated_date` report `calendar_date`; the remaining selected fields report `text`. The adapter accepts floating source timestamp metadata (`calendar_date` / `floating_timestamp`) and preserves the JSON date strings. Missing required metadata fields or changed semantic types fail the extraction without column substitution. Missing optional values within individual records remain NULL. This verification covers the landing selection, not every exploratory notebook field such as `descriptor_2`.
+
 ## Timestamp mapping
 
 | Column | Meaning | Do not confuse with |
