@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Request Hub and status Satellite implemented; other Vault models remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Request/agency/problem Hubs, request-assignment Links and status Satellite implemented; effectivity and remaining Satellites remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -28,8 +28,8 @@ RAW VAULT -> BV_REQUEST_STATUS_INTERVALS -> PIT_REQUEST_STATUS_ASOF -> MART_HIST
 | Model | Business key | Fields | Grain |
 |---|---|---|---|
 | `hub_request` | (`record_source`, `unique_key`) | request_hk, request_bk, load_dts_utc, record_source, mode | One per source namespace + original request key |
-| `hub_agency` | `agency` | agency_hk, agency_bk, load_dts_utc, record_source | One per agency acronym |
-| `hub_problem` | (`agency`, `complaint_type`) | problem_hk, problem_bk, agency, complaint_type, load_dts_utc, record_source | One per agency-scoped problem category |
+| `hub_agency` | (`record_source`, `agency`) | agency_hk, agency_bk, load_dts_utc, record_source, mode | One per namespace + exact agency code |
+| `hub_problem` | (`record_source`, `agency`, `complaint_type`) | problem_hk, problem_bk, agency_bk, complaint_type, load_dts_utc, record_source, mode | One per namespace + agency-scoped problem category |
 
 `unique_key` is a public dataset identifier, not the customer-facing service request number. Composite problem identity is deliberate and should be revisited if authoritative taxonomy keys become available.
 
@@ -60,13 +60,23 @@ A generic Hub for request status is unnecessary; status is a changing attribute.
 
 ## Implemented request/status decisions (2026-10-18)
 
-The request Hub deliberately scopes identity to (`record_source`, original `unique_key`) so synthetic and live records cannot merge. This refines the earlier source-key-only proposal without changing the source request grain. `request_bk` retains the exact original string. Other Hub/Link grains remain proposed and require their own source-scoping decisions before implementation.
+The request Hub deliberately scopes identity to (`record_source`, original `unique_key`) so synthetic and live records cannot merge. This refines the earlier source-key-only proposal without changing the source request grain. `request_bk` retains the exact original string. Agency/problem identities now use the same source namespace convention, as described below.
 
 The reusable hash contract is `dv2:v1:<domain>:<arity>:` followed by ordered fields encoded as `N;` for NULL or `S<UTF-8-byte-length>:<exact-text>;` for non-null text. Lowercase SHA-256 hashes use domain `request_hk` for [record_source, request_bk] and `request_status` for [status]. Canonicalization preserves exact strings, including case, whitespace, empty vs NULL, leading zeroes and Unicode code points. Typed expressions must be rendered canonically before using the text macro. There is no magic NULL sentinel or delimiter substitution.
 
 The Satellite uses (`request_hk`, `snapshot_at_utc`) as version grain. It compares adjacent capture states, retaining reversals and NULL transitions, and suppresses unchanged observations. Same-time identical observations coalesce deterministically by batch ID when first loaded; conflicting status hashes at one instant fail preflight. Existing batch provenance and `load_dts_utc` stay fixed on replay. Warehouse load timestamps are assigned at the first insertion transaction, independently of capture/source timestamps.
 
 Both models use append-only incremental loading with full-refresh disabled and explicitly rejected. Preflight compares already stored versions with the full expected adjacent history. A safe late version can append; a backfill that would retract or alter a stored boundary is blocked before Hub/Satellite mutation. Reconcile such changes in a separate database instead of deleting Raw Vault rows. Landing retention is necessary to validate existing history. The two dbt models commit independently; this slice does not provide one transaction across the entire dependency graph. No Business Vault intervals or PIT model is implemented yet.
+
+## Implemented assignment identity decisions (2026-10-18)
+
+Agency Hubs hash `[record_source, agency_bk]` under domain `agency_hk`; problem Hubs hash `[record_source, agency_bk, complaint_type]` under `problem_hk`. Exact source strings remain the business-key components. This refines the earlier unscoped proposals to keep synthetic/live identities separate. `problem_bk` is the canonical text serialization with prefix `dv2:v1:problem_bk:2:` and the two encoded source components. Names and descriptors belong to later descriptive Satellites.
+
+The agency Link hashes `[request_hk, agency_hk]` under domain `lnk_request_agency`; the problem Link hashes `[request_hk, problem_hk]` under `lnk_request_problem`. Each stores one ever-observed pair with source, mode and first warehouse load time. No active flag, source assignment date or effectivity boundary is inferred. Earlier captures can add new pairs; a return to an old pair does not create another Link identity. The underlying observation view preserves every successful batch and capture for future effectivity.
+
+Missing agency suppresses agency/problem identities and both Links for that observation. With agency present and problem missing, only the agency Hub/Link is eligible. Both original fields and missing/eligibility flags remain visible in `staging.int_request_assignment_observations`; no unknown member is created. Conflicting complete keys are checked per relationship at each request/capture instant before all new assignment models insert. Missing attributes are not an alternative assignment. Links require existing parent Hubs with matching namespace/mode. Request/status models and hashes are unchanged.
+
+Assignment models are append-only, block full refresh, fail schema changes and preserve warehouse metadata on replay. Each model commits independently. Project `indirect_selection: buildable` prevents partial upstream builds from selecting tests whose downstream assignment relations are outside the selection. Effectivity, descriptive Satellites and current-assignment reporting remain pending.
 
 ## Business Vault examples
 
