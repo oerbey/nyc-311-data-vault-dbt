@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; effectivity, remaining Satellites and analytics remain pending.
+**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; assignment effectivity implemented; remaining Satellites and analytics remain pending.
 **Updated:** 2026-10-18  
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -157,6 +157,16 @@ Agency/problem Hubs extend source namespacing to agency codes and agency/categor
 An observation view retains all successful records and exposes missing/eligibility flags. Missing agency omits both relationship types; missing category with a known agency omits only the problem identity/Link. No unknown members are created. Same-time conflicting eligible relationships fail preflight, and Links fail if parent identities are absent or provenance differs. Models append unseen identities/pairs and preserve first-load metadata on replay. Full refresh is blocked; schema changes fail. Earlier evidence can append an ever-observed relationship but cannot imply deactivation. Capture/batch provenance is retained in the input view, while Hub/Link rows store source/mode and warehouse load time.
 
 The current eligible input derives 4 agency identities, 31 problem identities, and 519 Links per relationship type. Counts are validated against source tuples, not permanent thresholds. Partial dbt builds use `indirect_selection: buildable` to avoid tests on unbuilt downstream relations. Each model commits independently; effectivity and current-assignment interpretation remain future work. No API extraction was added.
+
+### Implemented assignment effectivity (2026-10-18)
+
+Two insert-only Link Satellites now store observed activation/deactivation events.
+The architecture's effectivity section specifies grain, canonical boolean hashdiffs,
+independent eligibility timelines, replacement-only deactivation, late-history guards
+and retained provenance. No deactivation follows absence or incomplete captures.
+All 124 Python checks, Ruff and 114 selected dbt data tests passed; the copied
+project database derived 520 events per type without changing existing Vault rows.
+M3 descriptive Satellites and all Business Vault/mart work remain pending.
 
 ## 7. Business Vault and marts
 
