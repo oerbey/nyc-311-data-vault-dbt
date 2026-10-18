@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Staging, Data Vault models, and dashboard remain pending.**
+**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; the remaining Vault structures and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,60 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+## Request identity and status Raw Vault
+
+After landing ingestion, run from the repository root:
+
+```bash
+cd nyc_311_requests
+dbt build --profiles-dir . --select +sat_request_status
+```
+
+The leading `+` builds staging, hash preparation, and Hub dependencies before loading the status Satellite. This creates insert-only `raw_vault.hub_request` and `raw_vault.sat_request_status`. Both use the existing database and literal schema names. No network request is needed. Run loads sequentially and close other processes using DuckDB.
+
+The Hub has one identity per **(`record_source`, `request_bk`)**. The original business key remains exact text; the stable source namespace prevents a synthetic key from colliding with a live key. The status Satellite has one version per **(`request_hk`, `snapshot_at_utc`)** at each observed status change. It retains raw `status`, `hashdiff`, `batch_id`, `record_source`, `mode`, and the first warehouse `load_dts_utc`. Capture time and load time have distinct meanings. Original timestamps and provenance remain unchanged on replay.
+
+`dv_sha256(expressions, domain)` uses SHA-256 with an explicit v1 text encoding. The prefix is `dv2:v1:<domain>:<field-count>:`. Each field is `N;` for SQL NULL, or `S<UTF-8-byte-length>:<exact-text>;` otherwise. Field order is significant. Request hashes use domain `request_hk` with source namespace then request key; status hashdiffs use domain `request_status` with only the raw status. Hashes are lowercase hexadecimal. Empty strings, NULL, literal sentinels, delimiter-containing values, case, whitespace, leading zeroes and Unicode code points remain distinct. No trim, case fold, numeric coercion or Unicode normalization is applied. The macro is a text-serialization contract; future typed attributes need explicitly canonical text expressions before hashing. Changing the encoding/namespace requires a separately validated migration, not an in-place refresh.
+
+Change detection compares adjacent observations ordered by capture time, so Open → Closed → Open produces three versions even though the first/last hashdiff matches. Unchanged later captures do not create status versions. NULL status is preserved as an observed missing value, not inferred to mean Open/Closed. Identical same-time observations across batches coalesce to one boundary; initial tie selection uses batch ID order. Existing Satellite provenance is never switched to a later arriving identical batch.
+
+Preflight checks stop ambiguous same-time statuses before either Vault table loads. Safe late captures can append missing boundaries; a late capture that would remove/change an already stored boundary is rejected. No historical row is silently updated or deleted. Such backfills require reconstruction in a separate database and explicit reconciliation; automatic historical retraction is not implemented. Retain the landing observations used to derive existing history. `--full-refresh` is blocked for Raw Vault models, and schema changes fail instead of replacing existing structures. The Hub and Satellite are separate dbt transactions; if a later model fails unexpectedly, successfully inserted Hub identities remain valid and the load can be retried.
+
+Internal views `staging.int_request_status_observations` and `staging.int_request_status_changes` prepare hashes and expected transitions. dbt tests check canonical hashes, namespace/grain uniqueness, parent/batch relationships, exact change coverage and original observation provenance. The offline Python tests independently reproduce hashes and exercise sequential changes, replay, NULL/empty transitions, namespace collisions, leading-zero keys, safe/unsafe late captures, missing Hub parents and full-refresh rejection.
+
+Verification: 12 new integration tests plus the previous 85 Python checks cover this slice. The dependency build passes 58 dbt data tests. Against the current landing data, the result is 518 request identities (515 live, three synthetic) and 520 status versions (515 live, five synthetic). The full six-month live cohort has still not been downloaded. Other Hubs/Links/Satellites, effectivity, PIT and analytical marts remain future work.
+
+## dbt staging
+
+After a synthetic or live landing load, run from the repository root:
+
+```bash
+cd nyc_311_requests
+dbt build --profiles-dir . --select stg_311_request_snapshots
+```
+
+This creates the view `staging.stg_311_request_snapshots`. It reads successful batches only and preserves one row per `(batch_id, unique_key)`, every original source value, and capture provenance. Both live and synthetic observations remain available through `mode`, `source_id`, `record_source`, and `requested_filter`; filter the intended population explicitly. Repeated observations and status reversals are preserved. `request_bk` and `agency_bk` are aliases of the original text keys; ZIP codes remain text. No Vault hashes or `load_dts_utc` are assigned.
+
+Each source date string remains under its original name. Derived `created_at_nyc`, `closed_at_nyc`, `due_at_nyc`, and `resolution_action_updated_at_nyc` are local wall-clock TIMESTAMP values. Their `_utc` counterparts are timezone-aware instants under the explicit **America/New_York** interpretation. UTC columns are TIMESTAMPTZ: clients may display them in the session timezone; use `SET TimeZone='UTC'` when inspecting UTC clock values.
+
+The parser accepts `YYYY-MM-DDTHH:MM:SS` or a space separator, with optional 1–6 fractional digits and surrounding ASCII whitespace. Offset-bearing strings, date-only values, impossible calendar dates, and invalid clock values are flagged; raw strings are preserved. Empty/whitespace-only values count as missing. For each original date field, `<field>_time_status` is one of:
+
+| Status | Parsed local timestamp | UTC instant |
+|---|---|---|
+| `valid` | Available | Available |
+| `missing` | NULL | NULL |
+| `invalid_format` | NULL | NULL |
+| `ambiguous_local_time` | Available | NULL |
+| `nonexistent_local_time` | Available | NULL |
+
+NYC spring-forward gaps and fall-back repeated times are never guessed. UTC conversion requires a unique valid local time. DST classification uses round-trip conversion and the adjacent one-hour alternatives for the dataset's modern NYC timestamps. `<field>_parse_failed` distinguishes format/calendar errors from missing values and DST issues.
+
+`has_missing_required_fields` flags empty request/agency/problem/status or a missing creation date. `has_date_quality_issue` flags any malformed or DST-uncertain date; an optional missing closure/due/resolution date alone is not an error. `is_lifecycle_evaluable` requires both creation and closure UTC instants. `closed_before_created` flags reversed order and is NULL when either instant is unavailable. Quality flags retain rows for review; dbt tests verify structure and preservation rather than rejecting all source anomalies. `due_date` remains an expected agency update date, not a closure SLA.
+
+The schema-name macro uses literal configured schemas (`staging`) instead of the default target prefix (`main_staging`). Models without a custom schema retain `target.schema`. This is a local warehouse convention: independent development environments should use separate database files.
+
+Staging verification covers source preservation, composite grain, failed/running-batch exclusion, raw text/leading zeroes, malformed/null/blank dates, negative lifecycles, NYC DST gaps/folds and intervals across DST, and session-timezone independence. The full offline suite passes 85 Python checks; the staging build passes 26 dbt data tests. No API request is required to build staging.
 
 ## Live NYC 311 landing ingestion
 

@@ -1,0 +1,61 @@
+version: 2
+models:
+- name: hub_request
+  description: One identity per source namespace and exact request business key; SHA-256
+    v1 encoding. Insert-only, no full refresh.
+  columns:
+  - name: request_hk
+    data_tests:
+    - unique
+    - not_null
+  - name: request_bk
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    description: First successful warehouse insertion instant; never reset by replay.
+    data_tests:
+    - not_null
+- name: sat_request_status
+  description: One adjacent observed status change per request hash and capture time,
+    including reversals. Insert-only; conflicting ties and backfills requiring historical
+    retraction fail before mutation.
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: snapshot_at_utc
+    description: Observed state start, distinct from the first-load warehouse timestamp.
+    data_tests:
+    - not_null
+  - name: status
+    description: Exact source status, including NULL/empty/case/whitespace distinctions.
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    description: First time this observed status version entered the warehouse.
+    data_tests:
+    - not_null
