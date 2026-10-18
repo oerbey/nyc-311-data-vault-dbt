@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Offline and bounded live landing verified; staging and Vault implementation remain pending. Track tasks using checked boxes **only after verification**.
+**Status:** Landing, typed staging and the first request/status Raw Vault slice verified; remaining Vault structures are pending. Track tasks using checked boxes **only after verification**.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -32,21 +32,30 @@ Exploratory SQL slice verified on 2026-10-18: `run_sql_queries.ipynb` reuses the
 - [x] Define a configurable bounded cohort and a repeatable full-cohort refresh command (manual execution; scheduling remains future work).
 - [x] Extend live batch audit with diagnostic progress checkpoints, duplicate rejection, count reconciliation and atomic publication.
 - [ ] Implement resumable extraction/checkpoint recovery if required; failed/interrupted batches currently restart under new IDs.
-- [ ] Implement dbt staging and reusable canonical SHA-256 macros.
-- [ ] Test nulls, malformed source dates, distinct and duplicate keys.
+- [x] Implement the successful-batch staging view with raw-value preservation, typed local/UTC timestamps and date/lifecycle quality flags.
+- [x] Implement reusable canonical SHA-256 v1 text key/hashdiff macros with namespace/domain separation and independent byte-encoding tests.
+- [x] Test null/blank/malformed source dates, distinct/duplicate keys, snapshot preservation, failed-batch exclusion and NYC DST boundaries.
 **Acceptance:** bounded source extracts or synthetic batches are reproducible; every loaded row has provenance and a capture timestamp; no silent partial batches.
 
 Offline landing slice verified on 2026-10-18: 27 Python checks passed against temporary databases, including replay immutability, source preservation, injected partial-insert rollback, existing-table preservation, CLI execution, and notebook execution from root/notebook directories with network connections blocked. Ruff passed for ingestion, tests and notebook cells. dbt 1.11.16 / duckdb adapter 1.10.1 recognized two landing sources and passed all nine source tests against a temporary synthetic database. The existing unused `models.nyc_311_requests.example` configuration produces a warning in the isolated dbt check. The landing contract adds audit `record_source` for provenance-aware replay. Failed/running IDs require new IDs; automatic checkpoint recovery, API page reconciliation and live schema validation remain unimplemented, so the broader M2 audit task remains unchecked.
 
 Live landing slice verified on 2026-10-18: all 15 source fields/types matched live metadata. Count-only returned 302,762 rows for the planned January–June DEP/DSNY scope and 515 for January 1. A complete one-day extract passed multi-page retrieval and before/fetched/after reconciliation with 515 committed rows. The full six-month extraction was not run. Sixty-nine Python tests passed offline, including schema drift, retries/rate limits, malformed responses, duplicate keys, changing counts, size guards, transaction rollback, existing-data preservation, CLI dispatch and the offline walkthrough. Ruff passed. All eleven dbt source and publication/count checks passed against the verified live extraction. API validation and pagination are implemented; staging and Vault modeling remain pending. No scheduler or automatic resume is implemented.
 
+Staging slice verified on 2026-10-18: `staging.stg_311_request_snapshots` is a view over successful landing batches, retaining source strings, leading-zero IDs/ZIPs, all modes and observation history. NYC local times are parsed independently from observation time; UTC is produced only for unambiguous valid source times. DST gaps/folds are flagged and have NULL UTC values. Negative lifecycle order is flagged without dropping rows. All 85 Python checks passed, including 16 staging integration scenarios; all 26 staging dbt tests passed against a copy of the existing landing database. Ruff passed. The project uses literal custom schema names and separate database files for independent environments. Canonical Vault hashing and Vault load timestamps are intentionally pending. Existing dbt example-model warnings remain unrelated to staging.
+
 ## M3 — Raw Vault
-- [ ] Implement hub_request, hub_agency, hub_problem.
+- [x] Implement source-scoped `hub_request`.
+- [ ] Implement hub_agency and hub_problem.
 - [ ] Implement lnk_request_agency, lnk_request_problem.
-- [ ] Implement status/lifecycle/resolution/location/agency Satellites and effectivity for changing Links.
-- [ ] Verify replay idempotency, full history preservation, reopened requests, and relationship changes.
-- [ ] Add dbt relationships, uniqueness, not-null and change-history tests.
+- [x] Implement insert-only `sat_request_status` using adjacent capture changes and replay-safe first-load timestamps.
+- [ ] Implement lifecycle/resolution/location/agency Satellites and effectivity for changing Links.
+- [x] Verify request/status replay, reversals, NULL transitions, safe late arrivals, conflicting captures and full-refresh protection.
+- [ ] Verify relationship-history changes after Link/effectivity implementation.
+- [x] Add request/status relationships, uniqueness, provenance, canonical hash and expected change-history tests.
+- [ ] Extend tests to remaining Vault models.
 **Acceptance:** no existing business keys or unmodified Satellites duplicate on replay; changed relationships and states remain historically reconstructible.
+
+Request/status slice verified on 2026-10-18: 12 new offline integration tests independently reproduce UTF-8 SHA-256 encoding, isolate synthetic/live request identities, preserve leading zeroes and NULL/empty distinctions, retain Open → Closed → Open, keep original warehouse timestamps/provenance on replay, append safe late boundaries, and reject ties/backfills/full-refresh operations requiring historical mutation. The dependency build passes all 58 dbt data tests against a copy of the current database. The current data produces 518 request Hub identities and 520 status versions. Only the first M3 slice is complete; other Hubs/Links/Satellites, effectivity and M4 remain pending. Backfills requiring retraction need a separately validated reconstruction, not an in-place update.
 
 ## M4 — Business Vault / temporal semantics
 - [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.

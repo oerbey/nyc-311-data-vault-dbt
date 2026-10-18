@@ -15,7 +15,7 @@
 
 | Excel label | API field | Normalized staging field | Target | Semantics |
 |---|---|---|---|---|
-| Unique Key | unique_key | request_bk | hub_request | Public source request identifier, not customer-visible SR # |
+| Unique Key | unique_key | request_bk | hub_request | Original text; identity is scoped by record_source, not a customer-visible SR # |
 | Created Date | created_date | created_at_nyc | sat_request_lifecycle | Creation event |
 | Closed Date | closed_date | closed_at_nyc | sat_request_lifecycle | Closure event, nullable |
 | Agency | agency | agency_bk | hub_agency, lnk_request_agency | Responding agency, possibly changes |
@@ -53,6 +53,16 @@ The API metadata at `/api/views/erm2-nwe9.json` confirmed all 15 planned landing
 | load_dts_utc | First persisted Vault version load | Snapshot time |
 
 Use an explicit `America/New_York` interpretation for the source floating dates, subject to validation. Normalize event timestamps consistently and preserve raw source strings for debugging.
+
+## Implemented staging contract
+
+The staging view preserves the original 15 source columns and adds batch metadata, text aliases `request_bk` / `agency_bk`, `source_timezone`, and typed time columns. `created_date` maps to `created_at_nyc` / `created_at_utc`; closure and due dates map similarly. Resolution updates map to `resolution_action_updated_at_nyc` / `_utc`. `_nyc` is a naive wall-clock TIMESTAMP; `_utc` is a TIMESTAMPTZ instant.
+
+Every original date has `<field>_time_status` (valid, missing, invalid_format, ambiguous_local_time, nonexistent_local_time) and `<field>_parse_failed`. Missing and DST uncertainty differ from parse failure. UTC conversion uses America/New_York and leaves ambiguous/nonexistent local times unresolved. Missing required attributes, date quality issues and reversed lifecycle order are flagged while retaining rows. Both lifecycle endpoints must have usable UTC instants before `closed_before_created` can be evaluated; otherwise it is NULL. No source time is confused with `snapshot_at_utc`, and no Vault load timestamp is created.
+
+## Implemented request/status Vault mapping
+
+`request_hk` hashes [record_source, original request_bk] under domain `request_hk`; this isolates synthetic and live source namespaces. `hashdiff` hashes only the exact source `status` under domain `request_status`. V1 canonical text preserves NULL/empty/case/whitespace/Unicode distinctions with UTF-8 byte lengths. `sat_request_status` stores observed transitions by capture time, raw status, batch/source/mode provenance and independent first-load warehouse timestamps. Same-time conflicting states are rejected. No historical status is inferred before the first observation; no source event dates participate in the status hashdiff or observed ordering.
 
 ## Sample source parameters
 

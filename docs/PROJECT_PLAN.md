@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Offline and bounded live landing implemented and verified; staging and downstream warehouse layers remain pending.
+**Status:** Landing, typed staging, canonical hashing, request Hub and status Satellite implemented; other Vault structures and analytics remain pending.
 **Updated:** 2026-10-18  
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -113,12 +113,20 @@ Live batches begin auditing before network access, checkpoint diagnostics after 
 
 Capture start is `started_at_utc`, capture/reconciliation end is `snapshot_at_utc`, and publication end is `finished_at_utc`; running batches have a provisional snapshot timestamp. Failed extracts retain no published snapshots. Count agreement and duplicate checks do not make a multi-page pull transactional or detect every same-count source change. Agency-filtered membership may change; disappearance cannot establish deletion or a new assignment outside the selected agencies. Scheduling, tracked-ID follow-up, resumable extraction, staging and Vault loading remain later work. No Hub/Link grain or source-event semantics changed.
 
+### Implemented staging and timezone policy (2026-10-18)
+
+`staging.stg_311_request_snapshots` retains every successful `(batch_id, unique_key)` observation and all raw source strings. It includes batch mode/source/filter metadata so live and synthetic populations remain explicitly selectable. Raw keys are exposed as text `request_bk` / `agency_bk`; no key normalization or hashing is applied yet. The dbt schema macro uses literal custom schema names; separate database files isolate developer environments.
+
+Source dates are interpreted as **America/New_York** local wall-clock values. Parsing accepts full second-resolution ISO-like strings with T/space separator, optional microseconds and surrounding ASCII whitespace. Date-only, offset-bearing, malformed calendar/clock values are flagged instead of silently coerced. Source strings, NULL and blank remain inspectable. Local `_nyc` columns use TIMESTAMP. `_utc` columns use TIMESTAMPTZ and are populated only for unambiguous valid times. The model detects modern NYC one-hour DST gaps/folds by round-trip conversion and adjacent-hour alternatives; both cases retain parsed local values and NULL UTC instants.
+
+Per-field `*_time_status` distinguishes valid, missing, invalid_format, ambiguous_local_time and nonexistent_local_time. `*_parse_failed` denotes format/calendar problems. Missing required attributes and date quality issues are flagged. `closed_before_created` compares valid UTC instants, returns NULL when chronology cannot be evaluated, and never removes a row. Missing optional closure/due/resolution dates alone are not errors. No closure SLA, duration metric, historical status before capture or Vault `load_dts_utc` is inferred. Hash macros and Vault model implementation follow this slice.
+
 ## 6. Data Vault 2.0 modeling contract
 
 See [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) for full grain, keys and effectivity decisions.
 
 ### Hubs
-- **`hub_request`**: business key `unique_key` (source text, never assume customer-visible SR number).
+- **`hub_request`**: identity (`record_source`, `unique_key`) with original source text preserved in `request_bk`; the source namespace separates synthetic/live records.
 - **`hub_agency`**: business key `agency`.
 - **`hub_problem`**: scoped taxonomy key (`agency`, `complaint_type`), because the source says problem categories are defined by responding agencies. Key composition is an explicit project design decision.
 
@@ -135,6 +143,12 @@ See [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) for full grain, key
 - **`sat_agency_details`**: `agency_name` with observed updates (do not assume stable text).
 
 Every Hub/Link has `load_dts_utc` and `record_source`. Business/hash keys are canonical SHA-256; hashdiffs hash tracked *attributes*, with deterministic NULL handling, normalization and delimiter-safe encoding. Use `snapshot_at_utc` as effective **observed** start and preserve first-load warehouse timestamps. Design composite PKs to distinguish versions captured in separate batches; reject ambiguous ties for one request at one snapshot time. Do not overwrite Raw Vault Satellites to close past states.
+
+### Implemented first Raw Vault slice (2026-10-18)
+
+Canonical SHA-256 v1 uses domain/arity prefixes and null-aware UTF-8 byte-length text encoding. The request hash includes `record_source` and exact `request_bk`; status hashdiff includes only exact raw status. Empty, NULL, whitespace, case, leading-zero and Unicode distinctions are preserved. This source-scoped request identity is an explicit refinement to the original single-field key proposal, avoiding synthetic/live collisions.
+
+`hub_request` and `sat_request_status` are append-only incremental models. Warehouse `load_dts_utc` records first insertion and never resets on replay. Adjacent observations determine status boundaries; reversals and NULL transitions survive. Identical same-time captures coalesce, while conflicting same-time values fail. Safe late observations append; a late observation requiring removal/rewrite of an existing boundary fails before either model mutates. Full refresh is blocked. Reconstruct/reconcile invalidated history in a separate database; no automated retraction or promotion exists. Each dbt model commits separately. Current data produces 518 Hub identities and 520 status versions; the broader Vault and PIT remain pending.
 
 ## 7. Business Vault and marts
 

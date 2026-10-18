@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Proposed; models not implemented. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Request Hub and status Satellite implemented; other Vault models remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -27,7 +27,7 @@ RAW VAULT -> BV_REQUEST_STATUS_INTERVALS -> PIT_REQUEST_STATUS_ASOF -> MART_HIST
 
 | Model | Business key | Fields | Grain |
 |---|---|---|---|
-| `hub_request` | `unique_key` | request_hk, request_bk, load_dts_utc, record_source | One per open dataset request key |
+| `hub_request` | (`record_source`, `unique_key`) | request_hk, request_bk, load_dts_utc, record_source, mode | One per source namespace + original request key |
 | `hub_agency` | `agency` | agency_hk, agency_bk, load_dts_utc, record_source | One per agency acronym |
 | `hub_problem` | (`agency`, `complaint_type`) | problem_hk, problem_bk, agency, complaint_type, load_dts_utc, record_source | One per agency-scoped problem category |
 
@@ -57,6 +57,16 @@ When a request is reassigned, preserve both Links and the observed active/inacti
 All Satellites include `hashdiff`, `load_dts_utc`, `record_source`, `batch_id`. Track version transitions by comparing **adjacent consecutive snapshots** ordered by capture time (including if historical values recur), not only `DISTINCT` hashdiff across all time. Two snapshots with identical changed attributes should not create a new version. Where captures tie, require stable batch sequence and fail conflicting same-timestamp records.
 
 A generic Hub for request status is unnecessary; status is a changing attribute. Do not place a changing agency code only inside `sat_request_status` instead of preserving its Link relationships.
+
+## Implemented request/status decisions (2026-10-18)
+
+The request Hub deliberately scopes identity to (`record_source`, original `unique_key`) so synthetic and live records cannot merge. This refines the earlier source-key-only proposal without changing the source request grain. `request_bk` retains the exact original string. Other Hub/Link grains remain proposed and require their own source-scoping decisions before implementation.
+
+The reusable hash contract is `dv2:v1:<domain>:<arity>:` followed by ordered fields encoded as `N;` for NULL or `S<UTF-8-byte-length>:<exact-text>;` for non-null text. Lowercase SHA-256 hashes use domain `request_hk` for [record_source, request_bk] and `request_status` for [status]. Canonicalization preserves exact strings, including case, whitespace, empty vs NULL, leading zeroes and Unicode code points. Typed expressions must be rendered canonically before using the text macro. There is no magic NULL sentinel or delimiter substitution.
+
+The Satellite uses (`request_hk`, `snapshot_at_utc`) as version grain. It compares adjacent capture states, retaining reversals and NULL transitions, and suppresses unchanged observations. Same-time identical observations coalesce deterministically by batch ID when first loaded; conflicting status hashes at one instant fail preflight. Existing batch provenance and `load_dts_utc` stay fixed on replay. Warehouse load timestamps are assigned at the first insertion transaction, independently of capture/source timestamps.
+
+Both models use append-only incremental loading with full-refresh disabled and explicitly rejected. Preflight compares already stored versions with the full expected adjacent history. A safe late version can append; a backfill that would retract or alter a stored boundary is blocked before Hub/Satellite mutation. Reconcile such changes in a separate database instead of deleting Raw Vault rows. Landing retention is necessary to validate existing history. The two dbt models commit independently; this slice does not provide one transaction across the entire dependency graph. No Business Vault intervals or PIT model is implemented yet.
 
 ## Business Vault examples
 

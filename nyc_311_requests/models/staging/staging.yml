@@ -1,0 +1,165 @@
+version: 2
+models:
+- name: stg_311_request_snapshots
+  description: One observation per (batch_id, unique_key) from successful landing
+    batches, retaining all modes, raw values and quality issues. No deduplication
+    across snapshots, no Vault hashes/load timestamps. NYC DST gaps/folds are flagged
+    and excluded only from UTC conversion.
+  columns:
+  - name: batch_id
+    data_tests:
+    - not_null
+  - name: unique_key
+    data_tests:
+    - not_null
+  - name: request_bk
+    description: Original text unique_key, preserved exactly; no numeric coercion.
+    data_tests:
+    - not_null
+  - name: agency_bk
+    description: Original agency code, preserved without case or whitespace changes.
+  - name: incident_zip
+    description: Source text, retaining leading zeroes.
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - synthetic
+          - live
+    - not_null
+  - name: snapshot_at_utc
+    description: Pipeline observation instant, not a source event date or Vault load
+      timestamp.
+    data_tests:
+    - not_null
+  - name: source_timezone
+    description: Explicit interpretation of floating source times.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - America/New_York
+    - not_null
+  - name: created_date
+    description: Original source string; retained even when blank, malformed or ambiguous.
+  - name: created_at_nyc
+    description: Parsed NYC wall-clock TIMESTAMP, without timezone.
+  - name: created_at_utc
+    description: UTC instant (TIMESTAMPTZ); NULL unless the local timestamp is valid
+      and unambiguous.
+  - name: created_date_time_status
+    description: Missing includes NULL/blank; ambiguous/nonexistent DST values have
+      no inferred UTC instant.
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: created_date_parse_failed
+    description: True for invalid format/calendar values; missing and DST issues are
+      distinguished by time_status.
+    data_tests:
+    - not_null
+  - name: closed_date
+    description: Original source string; retained even when blank, malformed or ambiguous.
+  - name: closed_at_nyc
+    description: Parsed NYC wall-clock TIMESTAMP, without timezone.
+  - name: closed_at_utc
+    description: UTC instant (TIMESTAMPTZ); NULL unless the local timestamp is valid
+      and unambiguous.
+  - name: closed_date_time_status
+    description: Missing includes NULL/blank; ambiguous/nonexistent DST values have
+      no inferred UTC instant.
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: closed_date_parse_failed
+    description: True for invalid format/calendar values; missing and DST issues are
+      distinguished by time_status.
+    data_tests:
+    - not_null
+  - name: due_date
+    description: Original source string; retained even when blank, malformed or ambiguous.
+  - name: due_at_nyc
+    description: Parsed NYC wall-clock TIMESTAMP, without timezone.
+  - name: due_at_utc
+    description: UTC instant (TIMESTAMPTZ); NULL unless the local timestamp is valid
+      and unambiguous.
+  - name: due_date_time_status
+    description: Missing includes NULL/blank; ambiguous/nonexistent DST values have
+      no inferred UTC instant.
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: due_date_parse_failed
+    description: True for invalid format/calendar values; missing and DST issues are
+      distinguished by time_status.
+    data_tests:
+    - not_null
+  - name: resolution_action_updated_date
+    description: Original source string; retained even when blank, malformed or ambiguous.
+  - name: resolution_action_updated_at_nyc
+    description: Parsed NYC wall-clock TIMESTAMP, without timezone.
+  - name: resolution_action_updated_at_utc
+    description: UTC instant (TIMESTAMPTZ); NULL unless the local timestamp is valid
+      and unambiguous.
+  - name: resolution_action_updated_date_time_status
+    description: Missing includes NULL/blank; ambiguous/nonexistent DST values have
+      no inferred UTC instant.
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: resolution_action_updated_date_parse_failed
+    description: True for invalid format/calendar values; missing and DST issues are
+      distinguished by time_status.
+    data_tests:
+    - not_null
+  - name: has_missing_required_fields
+    description: Missing/blank request key, agency, problem, status or creation date;
+      flagged, not dropped.
+    data_tests:
+    - not_null
+  - name: has_date_quality_issue
+    description: Any invalid/ambiguous/nonexistent date; optional missing dates alone
+      do not trigger this flag.
+    data_tests:
+    - not_null
+  - name: is_lifecycle_evaluable
+    description: Both creation and closure have unambiguous UTC instants.
+    data_tests:
+    - not_null
+  - name: closed_before_created
+    description: TRUE for negative lifecycle order; NULL when either instant is unavailable.
+  - name: channel_type
+    description: Alias of the original open_data_channel_type; raw source column is
+      also retained.
