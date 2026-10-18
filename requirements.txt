@@ -20,3 +20,7 @@ ruff>=0.9,<1.0
 # Future Streamlit dashboard (M5)
 streamlit>=1.40,<2.0
 pandas>=2.2,<3.0
+
+# Interactive API connection notebook
+jupyterlab>=4.3,<5.0
+ipykernel>=6.29,<8.0
