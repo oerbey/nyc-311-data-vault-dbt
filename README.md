@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; agency/problem Hubs and request-assignment Links are also implemented; assignment effectivity is implemented; remaining Satellites and dashboard remain pending.**
+**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; agency/problem Hubs and request-assignment Links are also implemented; assignment effectivity and the lifecycle Satellite are implemented; resolution/location/agency Satellites and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,76 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+## Request lifecycle Satellite
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +sat_request_lifecycle
+```
+
+`raw_vault.sat_request_lifecycle` stores adjacent observed changes to the ordered
+raw tuple `[created_date, closed_date, due_date]`. Hashdiff domain is
+`request_lifecycle`, using the unchanged SHA-256 v1 exact-text encoding. NULL,
+empty/blank, malformed, Unicode and formatting differences remain distinct even
+when two strings parse to the same instant. Clearing a closure date records a new
+version; equal values returning after a different tuple also produce a new version.
+Other attributes (status, agency, resolution text/dates, location) do not participate.
+All-null lifecycle tuples are preserved as observed missing values.
+
+Grain is `(request_hk, snapshot_at_utc)`. Each row stores the three original nullable
+strings, their `_at_nyc` / `_at_utc` columns, per-field `*_time_status` and
+`*_parse_failed`, `source_timezone`, `is_lifecycle_evaluable`, `closed_before_created`,
+`has_lifecycle_date_quality_issue`, hashdiff, batch/source/mode and first
+`load_dts_utc`. Local timestamps are naive; UTC and pipeline timestamps are
+TIMESTAMPTZ instants. Set `TimeZone='UTC'` when inspecting UTC clock values.
+Parsing and DST policy come unchanged from staging; gaps/folds keep NULL UTC,
+negative chronology remains flagged, and malformed/missing observations are retained.
+The lifecycle quality flag covers only these three dates, so an unrelated invalid
+resolution-update date does not change this Satellite. Missing values are identified
+by their per-field time status; missing dates alone do not set this quality flag.
+`due_date` is an expected agency update date. No SLA or duration metric is calculated.
+
+The two staging views `int_request_lifecycle_observations` and
+`int_request_lifecycle_changes` retain capture provenance, calculate raw hashes and
+coalesce identical ties by batch ID before adjacent change detection. Only successful
+batches contribute. Conflicting raw date tuples at the same request/capture instant
+fail before Satellite insertion. Required Hub parents must have matching source/mode.
+No lifecycle state is inferred before the first retained capture; raw event dates do
+not backdate the observed version.
+
+The model appends unseen boundaries, blocks full refresh, and fails schema changes.
+Replay preserves original batch provenance and warehouse timestamps, including when
+an earlier-sorting identical tie arrives. Safe late boundaries append; any late
+observation or parsing-policy change requiring an existing row/boundary to change
+fails. Retain original landing evidence and reconstruct/reconcile such history in a
+separate database. Each dbt model commits independently: dependency Hubs can commit
+before a later Satellite fails. Existing request/status/assignment models and hashes
+are unchanged.
+
+Inspect closure-date clearing in the fictional history:
+
+```sql
+select h.request_bk, s.snapshot_at_utc, s.created_date, s.closed_date,
+       s.due_date, s.closed_date_time_status, s.batch_id
+from raw_vault.sat_request_lifecycle s
+join raw_vault.hub_request h using (request_hk)
+where h.record_source = 'synthetic_311' and h.request_bk = 'DEMO-001'
+order by s.snapshot_at_utc;
+```
+
+Verification on 2026-10-19: 18 new network-free integration tests cover raw hashing,
+creation/due corrections, closure clearing, NULL/blank distinctions, Unicode,
+format-only changes, namespaces, DST/invalid dates, intraday capture, replay, safe
+and unsafe late arrivals, ties, parent/schema/full-refresh guards, failed/running
+exclusion and injected post-insert rollback. All 142 Python tests and Ruff passed.
+The copied-database dependency build passed 67 dbt data tests; a full build passed
+all 149 dbt data tests. An independent Python
+source-history reconstruction matched 520 lifecycle versions; all prior base tables
+and replay rows/timestamps stayed unchanged. Counts describe current evidence,
+not permanent thresholds. Resolution, location and agency-detail Satellites and
+Business Vault/PIT remain pending.
 
 ## Observed assignment effectivity
 
