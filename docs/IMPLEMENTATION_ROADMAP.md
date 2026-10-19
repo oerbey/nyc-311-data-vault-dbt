@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Landing, staging, request/agency/problem Hubs, assignment Links and status Satellite verified; assignment effectivity verified; remaining Satellites are pending. Track tasks using checked boxes **only after verification**.
+**Status:** Landing, staging, request/agency/problem Hubs, assignment Links and status Satellite verified; assignment effectivity verified; lifecycle Satellite verified; resolution/location/agency Satellites are pending. Track tasks using checked boxes **only after verification**.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -48,7 +48,8 @@ Staging slice verified on 2026-10-18: `staging.stg_311_request_snapshots` is a v
 - [x] Implement source-scoped hub_agency and hub_problem with exact-text canonical keys.
 - [x] Implement append-only lnk_request_agency and lnk_request_problem for eligible ever-observed pairs.
 - [x] Implement insert-only `sat_request_status` using adjacent capture changes and replay-safe first-load timestamps.
-- [ ] Implement lifecycle/resolution/location/agency Satellites.
+- [x] Implement insert-only lifecycle Satellite with raw dates and typed quality provenance.
+- [ ] Implement resolution/location/agency Satellites.
 - [x] Implement insert-only effectivity for changing Links.
 - [x] Verify request/status replay, reversals, NULL transitions, safe late arrivals, conflicting captures and full-refresh protection.
 - [x] Verify Link identity under reassignment, return, late evidence, incomplete keys and replay.
@@ -71,6 +72,17 @@ All 124 Python tests and Ruff passed. The copied-database build passed 114 dbt
 data tests with 520 source-derived events per type; all six existing Vault tables
 and effectivity replay metadata stayed unchanged. Descriptive Satellites remain
 pending, so M3 is not complete. No API extraction or Business Vault model was added.
+
+Lifecycle slice verified on 2026-10-19: the Satellite preserves exact raw
+creation/closure/due tuples and staging-derived typed dates/quality flags.
+Eighteen new offline integration cases cover adjacent changes, clearing/reversals,
+all raw hash inputs, source namespaces, DST/malformed/missing dates, intraday captures,
+replay/ties, late evidence, parent/schema/refresh guards, exclusion of failed/running
+legacy rows and rollback after an injected post-insert error. All 142 Python tests
+and Ruff passed. A copied-database dependency build passed 67 dbt data tests; the full build passed
+149 dbt data tests. Independent reconstruction matched 520 source-derived lifecycle versions; all prior base tables and replay
+metadata were unchanged. Descriptive Satellites remain pending; M3 is not complete.
+No API extraction, duration metric or Business Vault model was added.
 
 ## M4 — Business Vault / temporal semantics
 - [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.

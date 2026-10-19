@@ -1,7 +1,8 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; assignment effectivity implemented; remaining Satellites and analytics remain pending.
-**Updated:** 2026-10-18  
+**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; assignment effectivity and lifecycle Satellite implemented; resolution/location/agency Satellites and analytics remain pending.
+**Updated:** 2026-10-19
+
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
 
@@ -167,6 +168,19 @@ and retained provenance. No deactivation follows absence or incomplete captures.
 All 124 Python checks, Ruff and 114 selected dbt data tests passed; the copied
 project database derived 520 events per type without changing existing Vault rows.
 M3 descriptive Satellites and all Business Vault/mart work remain pending.
+
+### Implemented lifecycle Satellite (2026-10-19)
+
+`sat_request_lifecycle` stores adjacent raw created/closed/due tuples at
+`(request_hk, snapshot_at_utc)` grain with exact-text SHA-256 v1 domain
+`request_lifecycle`. Typed staging dates and lifecycle-specific quality flags are
+persisted alongside source strings. NULL clearing, format changes and reversals
+are retained; source event dates never set observed version time. Replay,
+conflicting capture, parent, schema, refresh and historical-rewrite safeguards
+follow the existing insert-only policy; dependency models commit separately.
+All 142 Python tests, Ruff and 67 selected dbt data tests passed against a copy.
+Independent source reconstruction matched 520 versions without changing existing
+tables. Resolution/location/agency Satellites and Business Vault remain pending.
 
 ## 7. Business Vault and marts
 

@@ -88,6 +88,24 @@ can lag a newly observed agency when the category is missing. These are capture-
 observations, not authoritative source assignment dates. No source event dates,
 agency names or descriptors determine relationship effectivity.
 
+## Implemented lifecycle mapping
+
+`created_date`, `closed_date`, `due_date` remain nullable raw text in
+`sat_request_lifecycle`, in that order under hashdiff domain `request_lifecycle`.
+Each includes staging's parsed `created_at_nyc` / `created_at_utc` (and corresponding
+closed/due columns), per-raw-field time status and parse-failure flag. The Satellite
+also preserves timezone, lifecycle-evaluable/closed-before-created flags, and a
+lifecycle-only date quality flag covering malformed/DST-uncertain values in these
+three fields. Missing dates remain explicit through their time status. Resolution
+update quality does not affect this tuple or flag.
+
+Successful source capture maps to observed `snapshot_at_utc`; warehouse insertion
+maps to independent `load_dts_utc`. Raw strings drive change detection, so normalized
+format equivalence never hides an observation. A NULL closure after a populated
+closure is a new version, not deletion of earlier evidence. Optional/missing/bad
+values are retained, and no status transition, closure duration or universal SLA
+is inferred from them. Source-scoped request hashes remain unchanged.
+
 ## Sample source parameters
 
 ```python

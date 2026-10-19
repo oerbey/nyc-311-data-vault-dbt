@@ -42,4 +42,13 @@ reversals, batch provenance and first-load timestamps. Both effectivity models r
 late evidence that would retract/change stored events in either timeline; safe additive
 late events remain allowed. Full refresh is blocked; Link parent coverage is required.
 
-The next Vault slice is remaining descriptive/lifecycle Satellites. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+The lifecycle Satellite is implemented with exact-text raw created/closed/due
+hashdiff domain `request_lifecycle`, adjacent capture versions and persisted staging
+typed dates/quality flags. NULL/blank/format changes and closure-date clearing are
+observed versions; never normalize raw inputs before hashing. Capture time is not
+source event time. Lifecycle quality covers only these three dates. Replay retains
+batch/load provenance; ties, missing/inconsistent Hub parents, schema changes,
+full refresh and historical rewrites (including derived interpretation changes)
+fail. Each dbt model commits separately; safe additive late boundaries can append.
+
+The next Vault slice is request resolution, then location and agency details. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.

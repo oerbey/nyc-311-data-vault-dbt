@@ -1,0 +1,93 @@
+version: 2
+models:
+- name: sat_request_lifecycle
+  description: 'Insert-only adjacent raw created_date/closed_date/due_date changes.
+    Grain: request_hk + snapshot_at_utc. Typed NYC/UTC values and lifecycle quality
+    flags preserve staging interpretation; captures are not source event times.'
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: snapshot_at_utc
+    data_tests:
+    - not_null
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+  - name: source_timezone
+    data_tests:
+    - not_null
+  - name: is_lifecycle_evaluable
+    data_tests:
+    - not_null
+  - name: has_lifecycle_date_quality_issue
+    data_tests:
+    - not_null
+  - name: created_date
+    description: Exact nullable source text; no date normalization before hashing.
+  - name: created_date_time_status
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: created_date_parse_failed
+    data_tests:
+    - not_null
+  - name: closed_date
+    description: Exact nullable source text; no date normalization before hashing.
+  - name: closed_date_time_status
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: closed_date_parse_failed
+    data_tests:
+    - not_null
+  - name: due_date
+    description: Exact nullable source text; no date normalization before hashing.
+  - name: due_date_time_status
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: due_date_parse_failed
+    data_tests:
+    - not_null
