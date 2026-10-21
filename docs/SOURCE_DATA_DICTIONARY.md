@@ -106,6 +106,24 @@ closure is a new version, not deletion of earlier evidence. Optional/missing/bad
 values are retained, and no status transition, closure duration or universal SLA
 is inferred from them. Source-scoped request hashes remain unchanged.
 
+## Implemented resolution mapping
+
+The ordered exact raw tuple `[resolution_description, resolution_action_updated_date]`
+uses hashdiff domain `request_resolution` in `sat_request_resolution`. Nullable text,
+whitespace, line breaks, Unicode and date formatting remain unchanged. Both fields
+can change independently or clear to NULL. Adjacent reversals remain separate
+capture-time versions; no cross-history deduplication is performed.
+
+The source date also maps to staging's `resolution_action_updated_at_nyc` / `_utc`,
+`resolution_action_updated_date_time_status` and `*_parse_failed`. The Satellite
+retains these values plus timezone and `has_resolution_date_quality_issue` for
+malformed/DST-uncertain resolution dates only. Missing source dates remain explicit;
+other source date errors do not affect this flag. Only unambiguous valid NYC local
+times yield UTC. Pipeline `snapshot_at_utc` orders observed history, independently
+of source update and first warehouse `load_dts_utc`. Update dates may repeat or move
+backward and are not interpreted as a complete CDC/status transition log.
+Source-scoped request keys and all earlier hash definitions remain unchanged.
+
 ## Sample source parameters
 
 ```python

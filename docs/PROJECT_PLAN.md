@@ -1,7 +1,7 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; assignment effectivity and lifecycle Satellite implemented; resolution/location/agency Satellites and analytics remain pending.
-**Updated:** 2026-10-19
+**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; assignment effectivity and lifecycle Satellite implemented; resolution Satellite implemented; location/agency Satellites and analytics remain pending.
+**Updated:** 2026-10-21
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -181,6 +181,20 @@ follow the existing insert-only policy; dependency models commit separately.
 All 142 Python tests, Ruff and 67 selected dbt data tests passed against a copy.
 Independent source reconstruction matched 520 versions without changing existing
 tables. Resolution/location/agency Satellites and Business Vault remain pending.
+
+### Implemented resolution Satellite (2026-10-21)
+
+`sat_request_resolution` stores adjacent exact raw description/update-date tuples
+at `(request_hk, snapshot_at_utc)` grain under SHA-256 v1 domain `request_resolution`.
+Staging-derived NYC/UTC timestamps, source-specific date quality and original raw
+text are retained. Capture time orders observations even if source dates repeat
+or move backward. Description/date clearing and returning tuples produce versions.
+Replay retains warehouse metadata; conflicting ties, missing/inconsistent parents,
+schema/full-refresh changes and historical rewrites fail. Models commit separately.
+Twenty-one new integration cases passed; all 163 Python tests and Ruff passed.
+Copied-database builds passed 60 selected and 164 full-project dbt data tests.
+Independent source-history/hash reconstruction matched 518 versions without
+changing prior tables. Location/agency Satellites and Business Vault remain pending.
 
 ## 7. Business Vault and marts
 
