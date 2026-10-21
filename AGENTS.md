@@ -51,4 +51,14 @@ batch/load provenance; ties, missing/inconsistent Hub parents, schema changes,
 full refresh and historical rewrites (including derived interpretation changes)
 fail. Each dbt model commits separately; safe additive late boundaries can append.
 
-The next Vault slice is request resolution, then location and agency details. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+The resolution Satellite is implemented using the exact raw ordered description/
+update-date tuple under hashdiff domain `request_resolution`. Persist staging's
+NYC/UTC resolution timestamp and resolution-only quality flags. Capture time orders
+versions even when source update dates repeat or move backward; never use the
+source date as a complete CDC cursor, status transition or observed boundary.
+Retain NULL/blank/text/format distinctions, adjacent reversals and clearing.
+Replay preserves provenance/load timestamps; conflicting ties, missing/inconsistent
+parents, schema/full-refresh changes and historical/interpretation rewrites fail.
+Safe additive late versions append. Each model commits independently.
+
+The next Vault slice is request location, then agency details. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.

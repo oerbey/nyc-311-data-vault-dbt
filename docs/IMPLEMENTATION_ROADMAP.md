@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Landing, staging, request/agency/problem Hubs, assignment Links and status Satellite verified; assignment effectivity verified; lifecycle Satellite verified; resolution/location/agency Satellites are pending. Track tasks using checked boxes **only after verification**.
+**Status:** Landing, staging, request/agency/problem Hubs, assignment Links and status Satellite verified; assignment effectivity verified; lifecycle Satellite verified; resolution Satellite verified; location/agency Satellites are pending. Track tasks using checked boxes **only after verification**.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -49,7 +49,8 @@ Staging slice verified on 2026-10-18: `staging.stg_311_request_snapshots` is a v
 - [x] Implement append-only lnk_request_agency and lnk_request_problem for eligible ever-observed pairs.
 - [x] Implement insert-only `sat_request_status` using adjacent capture changes and replay-safe first-load timestamps.
 - [x] Implement insert-only lifecycle Satellite with raw dates and typed quality provenance.
-- [ ] Implement resolution/location/agency Satellites.
+- [x] Implement insert-only resolution Satellite with exact text, raw/typed update dates and quality provenance.
+- [ ] Implement location/agency Satellites.
 - [x] Implement insert-only effectivity for changing Links.
 - [x] Verify request/status replay, reversals, NULL transitions, safe late arrivals, conflicting captures and full-refresh protection.
 - [x] Verify Link identity under reassignment, return, late evidence, incomplete keys and replay.
@@ -83,6 +84,18 @@ and Ruff passed. A copied-database dependency build passed 67 dbt data tests; th
 149 dbt data tests. Independent reconstruction matched 520 source-derived lifecycle versions; all prior base tables and replay
 metadata were unchanged. Descriptive Satellites remain pending; M3 is not complete.
 No API extraction, duration metric or Business Vault model was added.
+
+Resolution slice verified on 2026-10-21: exact description/update-date tuples
+create adjacent observed versions, including description changes without source
+date advancement, backwards dates, clearing and reversals. Raw strings and staging
+NYC/UTC/date-quality semantics remain intact. Twenty-one offline integration cases
+cover namespaces, encoding, preservation, capture order, replay, ties, late evidence,
+parent/schema/refresh/interpretation guards, failed/running exclusion and injected
+post-insert rollback. All 163 Python tests and Ruff passed. Copied-database builds
+passed 60 selected and 164 full-project dbt data tests. Independent Python history
+and hashes matched 518 source-derived resolution versions; all prior base tables
+and replay metadata remained unchanged. Location/agency Satellites remain pending,
+so M3 is not complete. No API extraction or Business Vault metric was added.
 
 ## M4 — Business Vault / temporal semantics
 - [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.
