@@ -1,0 +1,65 @@
+version: 2
+models:
+- name: sat_request_resolution
+  description: 'Insert-only adjacent changes to exact raw description/update-date
+    tuples. Grain: request_hk + snapshot_at_utc. Source time, capture time and first
+    warehouse load time remain distinct.'
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: snapshot_at_utc
+    data_tests:
+    - not_null
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+  - name: source_timezone
+    data_tests:
+    - not_null
+  - name: has_resolution_date_quality_issue
+    data_tests:
+    - not_null
+  - name: resolution_description
+    description: Exact nullable source text; never trim, normalize, or replace NULL/blank.
+  - name: resolution_action_updated_date
+    description: Exact nullable floating source date string; not a complete change-data-capture
+      cursor or observed version time.
+  - name: resolution_action_updated_at_nyc
+    description: Parsed local NYC wall-clock timestamp from staging.
+  - name: resolution_action_updated_at_utc
+    description: UTC instant only for unambiguous valid local source times.
+  - name: resolution_action_updated_date_time_status
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - valid
+          - missing
+          - invalid_format
+          - ambiguous_local_time
+          - nonexistent_local_time
+  - name: resolution_action_updated_date_parse_failed
+    data_tests:
+    - not_null

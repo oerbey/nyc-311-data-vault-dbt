@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Offline and bounded live landing ingestion, batch audit, deterministic fixtures, and dbt source checks are implemented and verified. Typed staging, canonical hashing, hub_request and sat_request_status are implemented; agency/problem Hubs and request-assignment Links are also implemented; assignment effectivity and the lifecycle Satellite are implemented; resolution/location/agency Satellites and dashboard remain pending.**
+**Status: Landing ingestion, typed staging, canonical hashing, all Hubs and assignment Links, Link effectivity, and status/lifecycle/resolution Satellites are implemented and verified. Location and agency-detail Satellites, Business Vault, and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,76 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+## Request resolution Satellite
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +sat_request_resolution
+```
+
+`raw_vault.sat_request_resolution` stores adjacent changes to the ordered raw
+`[resolution_description, resolution_action_updated_date]` tuple. SHA-256 v1 uses
+hashdiff domain `request_resolution`; existing request/other hashes are unchanged.
+Exact text is retained, including NULL, blank, case, whitespace, line breaks,
+delimiters and Unicode distinctions. Returning to an older tuple creates a new
+version, while unchanged captures and identical replay create none. All-null tuples
+remain explicit missing observations. The existing three synthetic demo requests
+have no resolution attributes, so each initially contributes one all-null version;
+the integration fixtures exercise resolution changes without altering those batches.
+
+Grain is `(request_hk, snapshot_at_utc)`. Rows retain the two raw attributes,
+staging's `resolution_action_updated_at_nyc` / `_utc`, per-field time-status and
+parse-failure flags, `source_timezone`, `has_resolution_date_quality_issue`,
+`hashdiff`, `batch_id`, `record_source`, `mode`, and first `load_dts_utc`.
+NYC local timestamps remain naive; UTC, capture and warehouse timestamps are
+TIMESTAMPTZ instants. Set `TimeZone='UTC'` to inspect UTC clock values. Missing and
+malformed dates remain inspectable; DST gaps/folds retain local values with NULL UTC.
+The quality flag covers only malformed/DST-uncertain resolution-update dates;
+missing dates are identified by their time status and do not set this flag.
+
+Capture time orders versions. A description can change with an unchanged or
+backward-moving source update date; both cases are retained. The source date is
+neither a complete CDC cursor nor a guaranteed status-change/assignment timestamp.
+It never backdates an observed boundary. No resolution state is inferred before
+first capture, and no closure status, SLA, duration or analytical metric is calculated.
+Changes to status, lifecycle dates, agency or location alone do not create versions.
+
+The staging observation/change views read successful batches only, retain capture
+provenance, and coalesce identical capture ties deterministically by batch ID.
+Conflicting raw tuples at one request/capture instant fail before Satellite insertion.
+Hub parents must exist with matching source/mode. Append-only incremental loading
+blocks full refresh and fails schema changes. Replay preserves original provenance
+and warehouse timestamps even after an earlier-sorting identical tie arrives.
+Safe additive late boundaries append; evidence or parsing-policy changes requiring
+existing rows/boundaries to change fail. Retain landing evidence and reconstruct
+such history in a separate database. Each dbt model commits independently, so a
+successful dependency Hub load can remain after a later Satellite failure.
+
+Inspect resolution dates and capture provenance:
+
+```sql
+select h.request_bk, s.snapshot_at_utc, s.resolution_action_updated_date,
+       s.resolution_action_updated_date_time_status,
+       s.has_resolution_date_quality_issue, s.batch_id
+from raw_vault.sat_request_resolution s
+join raw_vault.hub_request h using (request_hk)
+where h.record_source = 'synthetic_311'
+order by h.request_bk, s.snapshot_at_utc;
+```
+
+Verification on 2026-10-21: 21 new offline integration tests cover ordered raw
+hashing, adjacent changes/reversals, date/description clearing, NULL/blank/Unicode
+and newline preservation, source time moving backward, DST/invalid dates, namespaces,
+intraday captures, immutable replay, safe/unsafe late arrivals, conflicting ties,
+parent/schema/full-refresh/interpretation guards, failed/running exclusion, and
+rollback after an injected post-insert error. All 163 Python tests and Ruff passed.
+The copied-database dependency build passed 60 dbt data tests and the full build
+passed 164. Independent Python source-history and SHA-256 reconstruction matched
+518 resolution versions; all prior base tables and replay metadata stayed unchanged.
+Counts describe current retained evidence, not permanent thresholds. Location and
+agency-detail Satellites, Business Vault and PIT remain pending.
 
 ## Request lifecycle Satellite
 
