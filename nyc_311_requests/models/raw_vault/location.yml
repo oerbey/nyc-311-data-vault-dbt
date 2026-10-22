@@ -1,0 +1,45 @@
+version: 2
+models:
+- name: sat_request_location
+  description: 'Insert-only adjacent changes to the exact borough/incident_zip/community_board
+    tuple. Grain: request_hk + snapshot_at_utc; capture time is distinct from first
+    warehouse load. Missing values are observed, never carried forward.'
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: snapshot_at_utc
+    data_tests:
+    - not_null
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+  - name: borough
+    description: Exact nullable source text; preserve NULL/blank, case, whitespace
+      and leading zeroes without normalization.
+  - name: incident_zip
+    description: Exact nullable source text; preserve NULL/blank, case, whitespace
+      and leading zeroes without normalization.
+  - name: community_board
+    description: Exact nullable source text; preserve NULL/blank, case, whitespace
+      and leading zeroes without normalization.

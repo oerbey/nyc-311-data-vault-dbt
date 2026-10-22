@@ -61,4 +61,14 @@ Replay preserves provenance/load timestamps; conflicting ties, missing/inconsist
 parents, schema/full-refresh changes and historical/interpretation rewrites fail.
 Safe additive late versions append. Each model commits independently.
 
-The next Vault slice is request location, then agency details. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+The location Satellite is implemented with the ordered exact raw borough/ZIP/
+community-board tuple under hashdiff domain `request_location`. Keep all three
+fields nullable text, including leading zeroes, NULL/blank, whitespace and unknown
+source values. Never infer/normalize geography or carry forward missing fields.
+Captured missing values create versions; absent requests do not. Preserve adjacent
+returns, capture ordering and replay metadata. Conflicting ties, missing/inconsistent
+parents, schema/full-refresh changes and historical rewrites fail; additive safe
+late boundaries append. Each dbt model commits independently. Observed corrections
+do not establish physical movement or location at earlier source event dates.
+
+The next Vault slice is agency details. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.

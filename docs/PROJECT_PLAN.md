@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing, staging, canonical hashing, all three Hubs, request-assignment Links and status Satellite implemented; assignment effectivity and lifecycle Satellite implemented; resolution Satellite implemented; location/agency Satellites and analytics remain pending.
+**Status:** Landing/staging, canonical hashing, all Hubs/assignment Links, status/lifecycle/resolution/location Satellites and assignment effectivity implemented; agency details and analytics remain pending.
 **Updated:** 2026-10-21
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
@@ -195,6 +195,20 @@ Twenty-one new integration cases passed; all 163 Python tests and Ruff passed.
 Copied-database builds passed 60 selected and 164 full-project dbt data tests.
 Independent source-history/hash reconstruction matched 518 versions without
 changing prior tables. Location/agency Satellites and Business Vault remain pending.
+
+### Implemented location Satellite (2026-10-21)
+
+`sat_request_location` preserves adjacent exact raw borough/ZIP/community-board
+changes at `(request_hk, snapshot_at_utc)` grain under hashdiff domain
+`request_location`. Nullable text and leading zeroes survive without normalization
+or carry-forward. Capture time describes observed values; it does not establish
+physical movement or location at earlier source events. Replay retains first-load
+metadata; ties, parent/schema/refresh and history-rewrite safeguards follow the
+existing insert-only policy. Each dbt model commits independently.
+Seventeen new offline integration cases passed; all 180 Python tests and Ruff passed.
+Copied-database builds passed 55 selected and 174 full-project dbt data tests.
+Independent source/hash reconstruction matched 518 versions without changing
+prior base tables. Agency details and Business Vault remain pending.
 
 ## 7. Business Vault and marts
 
