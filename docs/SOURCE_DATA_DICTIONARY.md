@@ -124,6 +124,22 @@ of source update and first warehouse `load_dts_utc`. Update dates may repeat or 
 backward and are not interpreted as a complete CDC/status transition log.
 Source-scoped request keys and all earlier hash definitions remain unchanged.
 
+## Implemented location mapping
+
+`sat_request_location` stores the ordered exact raw tuple
+`[borough, incident_zip, community_board]` under SHA-256 v1 domain `request_location`.
+All are nullable VARCHAR. ZIP/community-board leading zeroes, case, whitespace,
+Unicode, delimiters, NULL and blank values survive unchanged. Unknown/unspecified
+source strings remain source evidence rather than being remapped or rejected.
+Missing attributes in a captured request produce observed versions, not carry-forward;
+absence of the request itself produces no new observation.
+
+Successful source `snapshot_at_utc` orders adjacent versions independently of
+warehouse first `load_dts_utc`. Source event dates do not backdate geography.
+Reversals and returning tuples are retained; unchanged successive tuples collapse.
+No street address, precise coordinates or additional geography is introduced.
+Source-scoped request keys and existing hash definitions remain unchanged.
+
 ## Sample source parameters
 
 ```python

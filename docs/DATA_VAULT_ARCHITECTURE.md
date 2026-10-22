@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Request/agency/problem Hubs, request-assignment Links and status Satellite implemented; assignment effectivity and lifecycle Satellite implemented; resolution Satellite implemented; location/agency Satellites remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** All Hubs/assignment Links, status/lifecycle/resolution/location Satellites and assignment effectivity implemented; agency details and Business Vault remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -51,7 +51,7 @@ When a request is reassigned, preserve both Links and the observed active/inacti
 | `sat_request_status` | request_hk | request_hk + observed_from | status |
 | `sat_request_lifecycle` | request_hk | request_hk + snapshot_at_utc | created_date, closed_date, due_date |
 | `sat_request_resolution` | request_hk | request_hk + snapshot_at_utc | resolution_description, resolution_action_updated_date |
-| `sat_request_location` | request_hk | request_hk + observed_from | borough, incident_zip, community_board |
+| `sat_request_location` | request_hk | request_hk + snapshot_at_utc | borough, incident_zip, community_board |
 | `sat_agency_details` | agency_hk | agency_hk + observed_from | agency_name |
 
 All Satellites include `hashdiff`, `load_dts_utc`, `record_source`, `batch_id`. Track version transitions by comparing **adjacent consecutive snapshots** ordered by capture time (including if historical values recur), not only `DISTINCT` hashdiff across all time. Two snapshots with identical changed attributes should not create a new version. Where captures tie, require stable batch sequence and fail conflicting same-timestamp records.
@@ -283,6 +283,71 @@ passed 164. Independent Python source-history and SHA-256 reconstruction matched
 518 resolution versions; all prior base tables and replay metadata stayed unchanged.
 Counts describe current retained evidence, not permanent thresholds. Location and
 agency-detail Satellites, Business Vault and PIT remain pending.
+
+## Implemented location decisions (2026-10-21)
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +sat_request_location
+```
+
+`raw_vault.sat_request_location` records adjacent changes to the ordered exact
+`[borough, incident_zip, community_board]` tuple. Hashdiff domain is
+`request_location` using the existing SHA-256 v1 encoding. All three fields remain
+nullable VARCHAR: leading-zero ZIPs/board codes, NULL, empty/blank, case, whitespace,
+delimiters, Unicode, and source values such as `Unspecified` remain distinct.
+No trimming, numeric ZIP conversion, borough inference or source-value correction
+is applied. Missing values in a captured row are recorded explicitly; fields are
+not carried forward. A request absent from a capture contributes no new row.
+
+Grain is `(request_hk, snapshot_at_utc)`. Each row stores the three source fields,
+`hashdiff`, `batch_id`, `record_source`, `mode`, and first warehouse `load_dts_utc`.
+Capture/load timestamps are TIMESTAMPTZ instants; set `TimeZone='UTC'` to inspect
+UTC clock values. The source-scoped request hash is unchanged. Street addresses,
+coordinates and additional geography are outside this contract.
+
+The observation/change views retain successful captures and compare adjacent raw
+tuples. Unchanged captures add nothing; returns to an earlier tuple produce new
+versions. These are feed observations at capture time, not evidence of a physical
+move or authoritative location at the earlier creation/closure event. State before
+the first captured observation is unknown. Status, agency, lifecycle and resolution
+changes alone do not create location versions.
+
+Identical same-time tuples coalesce by batch ID on first load; conflicting tuples
+fail before insertion. Parent Hubs must have matching source/mode. Append-only
+incremental loading blocks full refresh and fails schema changes. Replay preserves
+original provenance and warehouse timestamps even after an earlier-sorting identical
+tie arrives. Safe additive late boundaries append; evidence requiring existing rows
+or boundaries to change fails. Retain landing evidence and reconstruct/reconcile
+such history in a separate database. Each dbt model commits independently, including
+dependency Hubs. All earlier Vault model/hash definitions remain unchanged.
+
+Inspect the synthetic observations:
+
+```sql
+select h.request_bk, s.snapshot_at_utc, s.borough, s.incident_zip,
+       s.community_board, s.batch_id
+from raw_vault.sat_request_location s
+join raw_vault.hub_request h using (request_hk)
+where h.record_source = 'synthetic_311'
+order by h.request_bk, s.snapshot_at_utc;
+```
+
+The fixed landing fixtures keep location unchanged, yielding one version per
+fictional request. Separate integration fixtures exercise corrections, clearing,
+reversals and returns without changing those immutable landing batches.
+
+Verification on 2026-10-21: 17 new offline integration tests cover all raw hash
+inputs, exact text/ZIP storage, namespaces, adjacent history, missing/disappearing
+observations, intraday/as-of boundaries, replay/ties, safe/unsafe late arrivals,
+parent/schema/full-refresh guards, failed/running exclusion and injected post-insert
+rollback. All 180 Python tests and Ruff passed. The copied-database dependency
+build passed 55 dbt data tests; the full build passed 174. Independent Python
+source-history/hash reconstruction matched 518 location versions. All prior base
+tables and replay metadata stayed unchanged. Counts describe current evidence,
+not permanent thresholds. Agency details remain the next M3 slice; Business Vault,
+PIT and analytical marts remain pending.
 
 ## Business Vault examples
 

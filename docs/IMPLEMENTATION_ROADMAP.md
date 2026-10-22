@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Landing, staging, request/agency/problem Hubs, assignment Links and status Satellite verified; assignment effectivity verified; lifecycle Satellite verified; resolution Satellite verified; location/agency Satellites are pending. Track tasks using checked boxes **only after verification**.
+**Status:** Landing/staging, all Hubs/assignment Links, status/lifecycle/resolution/location Satellites and assignment effectivity verified; agency details remain pending. Track checked boxes only after verification.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -50,7 +50,8 @@ Staging slice verified on 2026-10-18: `staging.stg_311_request_snapshots` is a v
 - [x] Implement insert-only `sat_request_status` using adjacent capture changes and replay-safe first-load timestamps.
 - [x] Implement insert-only lifecycle Satellite with raw dates and typed quality provenance.
 - [x] Implement insert-only resolution Satellite with exact text, raw/typed update dates and quality provenance.
-- [ ] Implement location/agency Satellites.
+- [x] Implement insert-only location Satellite with exact borough/ZIP/community-board history.
+- [ ] Implement agency-details Satellite.
 - [x] Implement insert-only effectivity for changing Links.
 - [x] Verify request/status replay, reversals, NULL transitions, safe late arrivals, conflicting captures and full-refresh protection.
 - [x] Verify Link identity under reassignment, return, late evidence, incomplete keys and replay.
@@ -96,6 +97,18 @@ passed 60 selected and 164 full-project dbt data tests. Independent Python histo
 and hashes matched 518 source-derived resolution versions; all prior base tables
 and replay metadata remained unchanged. Location/agency Satellites remain pending,
 so M3 is not complete. No API extraction or Business Vault metric was added.
+
+Location slice verified on 2026-10-21: exact raw borough/ZIP/community-board tuples
+create adjacent observed versions with explicit missing values and leading-zero ZIP
+preservation. Seventeen offline integration cases cover all raw hash inputs,
+source namespaces, text/type preservation, corrections/clearing/reversals, intraday
+as-of boundaries, replay/ties, safe/unsafe late evidence, parent/schema/refresh
+guards, failed/running exclusion and injected post-insert rollback. All 180 Python
+tests and Ruff passed. Copied-database builds passed 55 selected and 174 full-project
+dbt data tests. Independent Python history/hashes matched 518 source-derived
+versions; all prior base tables and replay metadata remained unchanged. Agency
+details remain pending, so M3 is not complete. No API extraction or Business Vault
+model was added.
 
 ## M4 — Business Vault / temporal semantics
 - [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.

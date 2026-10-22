@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing ingestion, typed staging, canonical hashing, all Hubs and assignment Links, Link effectivity, and status/lifecycle/resolution Satellites are implemented and verified. Location and agency-detail Satellites, Business Vault, and dashboard remain pending.**
+**Status: Landing/staging, canonical hashing, all Hubs and assignment Links, Link effectivity, and status/lifecycle/resolution/location Satellites are implemented and verified. Agency details, Business Vault, and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,71 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+## Request location Satellite
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +sat_request_location
+```
+
+`raw_vault.sat_request_location` records adjacent changes to the ordered exact
+`[borough, incident_zip, community_board]` tuple. Hashdiff domain is
+`request_location` using the existing SHA-256 v1 encoding. All three fields remain
+nullable VARCHAR: leading-zero ZIPs/board codes, NULL, empty/blank, case, whitespace,
+delimiters, Unicode, and source values such as `Unspecified` remain distinct.
+No trimming, numeric ZIP conversion, borough inference or source-value correction
+is applied. Missing values in a captured row are recorded explicitly; fields are
+not carried forward. A request absent from a capture contributes no new row.
+
+Grain is `(request_hk, snapshot_at_utc)`. Each row stores the three source fields,
+`hashdiff`, `batch_id`, `record_source`, `mode`, and first warehouse `load_dts_utc`.
+Capture/load timestamps are TIMESTAMPTZ instants; set `TimeZone='UTC'` to inspect
+UTC clock values. The source-scoped request hash is unchanged. Street addresses,
+coordinates and additional geography are outside this contract.
+
+The observation/change views retain successful captures and compare adjacent raw
+tuples. Unchanged captures add nothing; returns to an earlier tuple produce new
+versions. These are feed observations at capture time, not evidence of a physical
+move or authoritative location at the earlier creation/closure event. State before
+the first captured observation is unknown. Status, agency, lifecycle and resolution
+changes alone do not create location versions.
+
+Identical same-time tuples coalesce by batch ID on first load; conflicting tuples
+fail before insertion. Parent Hubs must have matching source/mode. Append-only
+incremental loading blocks full refresh and fails schema changes. Replay preserves
+original provenance and warehouse timestamps even after an earlier-sorting identical
+tie arrives. Safe additive late boundaries append; evidence requiring existing rows
+or boundaries to change fails. Retain landing evidence and reconstruct/reconcile
+such history in a separate database. Each dbt model commits independently, including
+dependency Hubs. All earlier Vault model/hash definitions remain unchanged.
+
+Inspect the synthetic observations:
+
+```sql
+select h.request_bk, s.snapshot_at_utc, s.borough, s.incident_zip,
+       s.community_board, s.batch_id
+from raw_vault.sat_request_location s
+join raw_vault.hub_request h using (request_hk)
+where h.record_source = 'synthetic_311'
+order by h.request_bk, s.snapshot_at_utc;
+```
+
+The fixed landing fixtures keep location unchanged, yielding one version per
+fictional request. Separate integration fixtures exercise corrections, clearing,
+reversals and returns without changing those immutable landing batches.
+
+Verification on 2026-10-21: 17 new offline integration tests cover all raw hash
+inputs, exact text/ZIP storage, namespaces, adjacent history, missing/disappearing
+observations, intraday/as-of boundaries, replay/ties, safe/unsafe late arrivals,
+parent/schema/full-refresh guards, failed/running exclusion and injected post-insert
+rollback. All 180 Python tests and Ruff passed. The copied-database dependency
+build passed 55 dbt data tests; the full build passed 174. Independent Python
+source-history/hash reconstruction matched 518 location versions. All prior base
+tables and replay metadata stayed unchanged. Counts describe current evidence,
+not permanent thresholds. Agency details remain the next M3 slice; Business Vault,
+PIT and analytical marts remain pending.
 
 ## Request resolution Satellite
 
