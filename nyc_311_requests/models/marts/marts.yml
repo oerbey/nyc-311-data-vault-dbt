@@ -1,0 +1,72 @@
+version: 2
+models:
+- name: mart_resolution_times
+  description: Request-grain latest-loaded-lifecycle reporting view. Source-scoped
+    identities, exact raw dates, nullable typed dates, valid duration measures and
+    signed diagnostics retain original provenance. Reporting population is the
+    retained request Hub, including unloaded/invalid/missing lifecycle states.
+    Filter record_source/mode explicitly. Event dates are NYC calendar dates from
+    usable instants; labels do not establish historical assignment or source freshness.
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - unique
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: request_bk
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: duration_quality_status
+    data_tests:
+    - not_null
+  - name: request_count
+    description: Additive population count, always one. Includes rows with unusable durations.
+    data_tests:
+    - not_null
+  - name: duration_eligible_count
+    description: One only for valid creation/closure pairs; sum is the duration-statistic denominator.
+    data_tests:
+    - not_null
+  - name: duration_ineligible_count
+    description: One for every excluded duration, including unknown lifecycle and reversed dates.
+    data_tests:
+    - not_null
+  - name: created_event_eligible_count
+    description: One when creation has a usable NYC/UTC instant and event date.
+    data_tests:
+    - not_null
+  - name: closed_event_eligible_count
+    description: One when closure has a usable instant/date, independently of creation/order/status.
+    data_tests:
+    - not_null
+  - name: created_event_date_nyc
+    description: NYC local creation date only for valid time status; otherwise NULL.
+  - name: closed_event_date_nyc
+    description: NYC local closure date only for valid time status; otherwise NULL. Not a closure-cycle ledger.
+  - name: created_cohort_month_nyc
+    description: First calendar day of created_event_date_nyc's month; NULL when creation is unusable.
+  - name: resolution_hours
+    description: Nonnegative source-date elapsed UTC hours for eligible pairs; NULL otherwise.
+  - name: resolution_days
+    description: resolution_hours / 24, elapsed 24-hour days.
+  - name: reported_closure_elapsed_hours
+    description: Signed diagnostic elapsed hours; negative values remain inspectable.
+  - name: snapshot_at_utc
+    description: Selected lifecycle version capture, not report run time or last unchanged capture.
+  - name: load_dts_utc
+    description: Original lifecycle version first warehouse load time.
+  - name: batch_id
+    data_tests:
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id

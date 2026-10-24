@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 marts and dashboard remain pending.
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time mart implemented; remaining marts and dashboard are pending.
 **Updated:** 2026-10-24
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
@@ -357,10 +357,21 @@ models/temporal checks are complete for retained evidence; M5 marts are next.
 |---|---|---|
 | `mart_request_trends` | date + agency + problem + borough | Created count; closed count from **events**, separate date measures |
 | `mart_agency_performance` | agency + cohort/month | Volume, closed share at defined extract/as-of, median/p90 closure time |
-| `mart_resolution_times` | request_id | Created/closed timestamps, turnaround hours, anomaly flags |
+| `mart_resolution_times` | source-scoped request_hk, latest loaded lifecycle capture | Implemented: raw/typed dates, valid durations, quality/provenance, NYC event dates and population/eligibility counters |
 | `mart_historical_status` | snapshot as-of date + agency + status | Observed open/in-progress/closed counts; only **from first snapshot forward** |
 
 Do **not** use `due_date` as closure-SLA; the dictionary states it is when the responding agency is expected to update the request. Distinguish "new requests created in month" from "requests closed in month"; one request can contribute to both on different dates.
+
+### Implemented first M5 slice (2026-10-24)
+
+`marts.mart_resolution_times` publishes the latest lifecycle metric per request
+without dropping duration exclusions. NYC event dates and creation cohort month
+use only valid source times. Population, duration and event counters have explicit
+denominators in [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md). Record source/mode
+remain separate; capture dates are not event dates. Twenty-two offline cases and
+Ruff passed; copied-database builds passed 230 dbt tests. Independent date/counter/
+provenance reconstruction matched 518 rows (498 eligible durations, 20 exclusions).
+Prior base tables/BV outputs and mart replay stayed unchanged. M5 remains in progress.
 
 ## 8. Data tests and tricky history scenarios
 
