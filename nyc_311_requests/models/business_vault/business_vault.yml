@@ -84,3 +84,67 @@ models:
           field: batch_id
   - name: status
     description: Exact nullable source status; consult is_status_observed for unknown state.
+- name: bv_request_resolution_metrics
+  description: Latest-loaded-capture lifecycle metrics, one row per request Hub identity.
+    Source-date elapsed duration is independent of reported status and is not a
+    response-time, closure-cycle or SLA metric. No historical as-of filter is applied.
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - unique
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: request_bk
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: is_lifecycle_observed
+    data_tests:
+    - not_null
+  - name: snapshot_at_utc
+    description: Capture of the latest loaded lifecycle version, not the latest unchanged landing capture.
+  - name: batch_id
+    data_tests:
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: load_dts_utc
+    description: Original Raw Vault first-load timestamp; never a metric refresh clock.
+  - name: is_duration_evaluable
+    description: True when both source endpoints have usable UTC instants, including reversed pairs.
+    data_tests:
+    - not_null
+  - name: is_duration_valid
+    description: Both endpoints usable and closure >= creation. Due-date quality does not gate this flag.
+    data_tests:
+    - not_null
+  - name: reported_closure_elapsed_hours
+    description: Signed elapsed UTC hours, including negative diagnostic values; NULL for unusable endpoints.
+  - name: resolution_hours
+    description: Nonnegative elapsed hours for valid endpoint pairs; otherwise NULL, never clamped to zero.
+  - name: resolution_days
+    description: resolution_hours / 24, elapsed 24-hour days rather than calendar days.
+  - name: duration_quality_status
+    description: Priority is unobserved, missing/unusable creation, missing/unusable closure, reversed, valid.
+      Original per-field flags expose all issues even when multiple apply.
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values:
+          - lifecycle_unobserved
+          - missing_created
+          - unusable_created
+          - missing_closed
+          - unusable_closed
+          - closed_before_created
+          - valid

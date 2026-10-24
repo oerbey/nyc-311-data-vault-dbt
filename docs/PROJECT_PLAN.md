@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, required M3 Raw Vault models/checks, and M4 observed status intervals/bounded PIT implemented; lifecycle metrics and analytics remain pending.
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 marts and dashboard remain pending.
 **Updated:** 2026-10-24
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
@@ -326,6 +326,23 @@ The default calendar currently has four instants and produces 2,072 rows: 527
 observed and 1,545 unknown. All prior base tables and replay results were unchanged.
 Counts describe retained evidence, not permanent thresholds. Lifecycle duration
 metrics are next; M4 remains incomplete. No new extraction or mart is added.
+
+
+### Implemented lifecycle metrics / M4 completion (2026-10-24)
+
+`business_vault.bv_request_resolution_metrics` selects the latest loaded lifecycle
+capture per request Hub. It preserves raw/typed dates, quality and original provenance;
+unknown Hub-only state stays explicit. Signed UTC elapsed hours remain diagnostic,
+including negative values. `resolution_hours`/`resolution_days` require usable,
+nonnegative creation/closure pairs; invalid/missing/DST-uncertain endpoints stay NULL.
+Due dates and status do not decide eligibility. Closure clearing updates latest metrics;
+late older captures never replace newer ones. This is latest-capture source-date
+measurement, not historical lifecycle as-of, response-time, closure-cycle or SLA analysis.
+See the architecture for field definitions, quality priority and guarded loading.
+Thirty-four new offline cases and Ruff passed; the copied-database build passed
+216 dbt data tests and independently matched 518 latest rows (498 valid, 20 missing
+closure). All prior base data and replay provenance were preserved. Required M4
+models/temporal checks are complete for retained evidence; M5 marts are next.
 
 ## 7. Business Vault and marts
 
