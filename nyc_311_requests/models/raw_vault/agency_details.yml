@@ -1,0 +1,45 @@
+version: 2
+models:
+- name: sat_agency_details
+  description: One adjacent observed agency-name change per source-scoped agency_hk
+    + snapshot_at_utc. Agreeing cross-request observations coalesce; conflicting names,
+    including NULL vs text, fail. Capture time is not authoritative agency rename
+    time.
+  columns:
+  - name: agency_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_agency')
+          field: agency_hk
+  - name: snapshot_at_utc
+    data_tests:
+    - not_null
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: evidence_request_bk
+    data_tests:
+    - not_null
+    description: Exact request key supporting the originally loaded agency observation;
+      not an agency identity component.
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+  - name: agency_name
+    description: Exact nullable source name. NULL/blank/case/whitespace/Unicode distinctions
+      are retained.

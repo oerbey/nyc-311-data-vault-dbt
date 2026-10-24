@@ -1,7 +1,7 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, canonical hashing, all Hubs/assignment Links, status/lifecycle/resolution/location Satellites and assignment effectivity implemented; agency details and analytics remain pending.
-**Updated:** 2026-10-21
+**Status:** Landing/staging and required M3 Raw Vault models/checks implemented; Business Vault, PIT and analytics remain pending.
+**Updated:** 2026-10-22
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -209,6 +209,23 @@ Seventeen new offline integration cases passed; all 180 Python tests and Ruff pa
 Copied-database builds passed 55 selected and 174 full-project dbt data tests.
 Independent source/hash reconstruction matched 518 versions without changing
 prior base tables. Agency details and Business Vault remain pending.
+
+### Implemented agency details / M3 completion (2026-10-22)
+
+`sat_agency_details` stores exact nullable agency-name changes at
+`(agency_hk, snapshot_at_utc)` grain, using domain `agency_details`. Names never
+participate in identity. Agreeing request observations coalesce by batch ID then
+request key; conflicting names at the same agency/capture fail, including NULL
+versus populated names. Missing agency keys are flagged/excluded; missing names
+and missing categories do not suppress a valid agency observation. Supporting
+`evidence_request_bk` plus batch retains original lineage on replay. The agency
+Hub is the only Hub parent; existing request/assignment definitions are unchanged.
+Late-history, parent/schema/refresh and transaction/replay safeguards are tested.
+All 198 Python tests, Ruff, 67 selected and 185 full-project dbt data tests passed
+against temporary/copied databases. Independent history/hash/evidence checks matched
+four versions. Existing tables stayed unchanged. The required M3 models and tests
+are complete; M4 status intervals and PIT follow. M1 tooling and M6 CI/release tasks
+remain tracked separately.
 
 ## 7. Business Vault and marts
 

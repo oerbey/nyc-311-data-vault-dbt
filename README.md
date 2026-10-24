@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging, canonical hashing, all Hubs and assignment Links, Link effectivity, and status/lifecycle/resolution/location Satellites are implemented and verified. Agency details, Business Vault, and dashboard remain pending.**
+**Status: Landing/staging and required M3 Raw Vault models are implemented and verified: all Hubs/assignment Links, Link effectivity, request status/lifecycle/resolution/location Satellites, and agency details. Business Vault, PIT, and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,77 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+## Agency-name Satellite
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +sat_agency_details
+```
+
+`raw_vault.sat_agency_details` records adjacent changes to exact nullable
+`agency_name`, with hashdiff domain `agency_details` and unchanged SHA-256 v1
+encoding. Its parent is the source-scoped agency Hub; names never define agency
+identity. Grain is `(agency_hk, snapshot_at_utc)`. Rows store the name, hashdiff,
+batch/source/mode, `evidence_request_bk`, and first warehouse `load_dts_utc`.
+Capture/load timestamps are TIMESTAMPTZ instants. The supporting request key plus
+batch identifies original landing evidence; it is not an agency identity component
+and does not require a request Hub parent.
+
+Agency names arrive on request rows. Every eligible observation for one agency at
+one capture instant must agree, across requests and batches. Conflicting names
+fail before Satellite insertion, including populated vs NULL, empty vs blank,
+case/whitespace and Unicode differences. Agreeing ties select batch ID then exact
+request key on first load. Replay retains original evidence and warehouse timestamps
+even when a later-arriving identical observation sorts earlier. No majority vote,
+normalization or preference for populated names is applied.
+
+`staging.int_agency_details_observations` retains every successful source row with
+`has_missing_agency`, `has_missing_agency_name` and `is_agency_details_eligible`.
+Missing/blank agency keys remain flagged and contribute no Satellite row. A valid
+agency with a missing category remains eligible. NULL/blank agency names are
+eligible observed values, not placeholders; clearing a name or returning to an
+older name creates a version. Missing names are not carried forward. An absent
+agency/request contributes no observation. These request-feed labels establish
+observed names, not authoritative legal names or City-side rename timestamps.
+State before the first captured agency observation remains unknown.
+
+The change view coalesces agreeing ties before adjacent comparison. Append-only
+loading requires agency Hub coverage and matching business key/source/mode for all
+eligible observations, blocks full refresh, and fails schema changes. Safe additive
+late boundaries append; evidence requiring existing history to be changed/retracted
+fails. Retain landing evidence and reconstruct/reconcile such history separately.
+Each dbt model commits independently; a dependency Hub can commit before the
+Satellite fails. Other request attributes do not participate in the name hash,
+and all earlier Vault models and hashes remain unchanged.
+
+Inspect synthetic agency history:
+
+```sql
+select h.agency_bk, s.snapshot_at_utc, s.agency_name,
+       s.batch_id, s.evidence_request_bk
+from raw_vault.sat_agency_details s
+join raw_vault.hub_agency h using (agency_hk)
+where h.record_source = 'synthetic_311'
+order by h.agency_bk, s.snapshot_at_utc;
+```
+
+Verification on 2026-10-22: 18 new offline integration tests cover cross-request/
+cross-batch coalescing and conflicts, deterministic evidence, exact names and source
+namespaces, missing-key/name policy, renames/clearing/reversals, intraday/as-of
+boundaries, replay, safe/unsafe late evidence, parent/schema/refresh guards,
+failed/running exclusion, rollback after an injected post-insert error, and a fresh
+agency-only build. All 198 Python tests and Ruff passed. The copied-database
+dependency build passed 67 dbt data tests; the full build passed 185. Independent
+Python reconstruction matched four agency-name versions, hashes and evidence rows:
+two live and two synthetic. All prior base tables and replay metadata stayed
+unchanged. Counts describe current retained evidence, not permanent thresholds.
+
+This completes the required M3 Raw Vault models and checks. M4 begins with
+`bv_request_status_intervals`, followed by bounded snapshot-as-of PIT. No Business
+Vault intervals, PIT, metrics, scheduling or additional API extraction is implemented
+by this slice; broader foundation/CI milestones remain tracked separately.
 
 ## Request location Satellite
 

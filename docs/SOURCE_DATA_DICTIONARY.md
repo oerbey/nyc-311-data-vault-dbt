@@ -140,6 +140,24 @@ Reversals and returning tuples are retained; unchanged successive tuples collaps
 No street address, precise coordinates or additional geography is introduced.
 Source-scoped request keys and existing hash definitions remain unchanged.
 
+## Implemented agency-details mapping
+
+Exact nullable `agency_name` maps to `sat_agency_details` under hashdiff domain
+`agency_details`. Its parent `agency_hk` remains the unchanged hash of source
+namespace plus exact `agency_bk`. Name case/whitespace/Unicode, NULL and blank are
+preserved; names and descriptors never change agency identity.
+
+Only valid nonblank agency keys contribute versions. Missing agency rows remain
+flagged in the observation view; a missing category does not suppress an agency
+name. NULL/blank names remain eligible observed values, with no carry-forward or
+populated-value preference. At one agency/capture, all request/batch observations
+must agree; conflicts fail. Initial evidence selection is batch ID then request key.
+`evidence_request_bk` plus stored batch identifies a supporting landing row and
+survives replay unchanged. It is not a request Hub relationship. Adjacent capture
+changes preserve renames, clearing and returns, with source-scoped identities and
+separate first warehouse load time. These feed labels do not establish legal agency
+names or source-side rename event dates.
+
 ## Sample source parameters
 
 ```python
