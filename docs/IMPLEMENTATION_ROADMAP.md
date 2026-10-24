@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 Raw Vault models/checks complete, including agency details. Business Vault/PIT remain pending; broader foundation/CI tasks remain tracked separately.
+**Status:** Required M3 models/checks complete; first M4 observed status interval slice verified. Bounded PIT and lifecycle metrics remain pending; foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -125,11 +125,24 @@ retained synthetic/bounded-live evidence. No M4/PIT/metric or API extraction was
 added; M1/M6 foundation/CI tasks remain separately tracked.
 
 ## M4 — Business Vault / temporal semantics
-- [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.
+- [x] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.
 - [ ] Build bounded pit_request_status_asof.
 - [ ] Build request lifecycle duration metrics with source local-time conversion.
-- [ ] Test before-first-snapshot, exact boundary, late arrival and DST cases.
+- [x] Verify status-interval before-first/exact-boundary/intraday/late-capture behavior and timezone independence.
+- [ ] Extend temporal and DST checks to bounded PIT and lifecycle metrics.
 **Acceptance:** as-of results match deterministic fixtures; do not pretend to reconstruct pre-capture status history.
+
+Observed status intervals verified on 2026-10-24: the Business Vault view projects
+all Raw Vault status versions into start-inclusive/end-exclusive intervals, preserving
+raw values and first-load provenance. Last known rows have NULL ends; state before
+first capture is unknown. Accepted late versions revise derived ends without Raw
+Vault mutation. Seventeen offline cases cover as-of/reversal/NULL semantics,
+source separation, dynamic updates, independent endpoints/provenance, UTC/DST,
+replay, corrupt-input guards, upstream conflict/retraction protection and an empty
+fresh build. All 215 Python tests and Ruff passed. Copied-database builds passed
+68 selected and 195 full-project dbt data tests, matching 520 intervals and 518
+latest unbounded rows. All prior base tables and replay data stayed unchanged.
+Bounded PIT and lifecycle metrics remain pending, so M4 is not complete.
 
 ## M5 — Marts + dashboard
 - [ ] mart_request_trends with created and closed event metrics.

@@ -1,0 +1,46 @@
+version: 2
+models:
+- name: bv_request_status_intervals
+  description: Derived half-open observed status intervals; one per request_hk + observed_from.
+    View endpoints follow newly accepted Raw Vault versions without modifying Raw
+    Vault history. State before first capture is unknown.
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: observed_from
+    data_tests:
+    - not_null
+    description: Inclusive observed start; exactly the Raw Vault snapshot_at_utc,
+      not a source event date.
+  - name: hashdiff
+    data_tests:
+    - not_null
+  - name: batch_id
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: load_dts_utc
+    data_tests:
+    - not_null
+    description: Original first-load timestamp from sat_request_status; this view
+      creates no new warehouse timestamp.
+  - name: next_observed_from
+    description: Exclusive end at the next captured status version; NULL on the latest
+      known version. An open end makes no freshness claim.
+  - name: status
+    description: Exact nullable Raw Vault status. NULL is an observed missing value;
+      no taxonomy or classification is applied.
