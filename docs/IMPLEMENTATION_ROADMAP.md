@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 marts are next; foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. First M5 resolution-time mart verified; remaining reporting slices are pending. Foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -243,10 +243,22 @@ this slice. No new extraction was performed. M1/M6 tasks remain separately track
 ## M5 — Marts + dashboard
 - [ ] mart_request_trends with created and closed event metrics.
 - [ ] mart_agency_performance with carefully defined rates, median and p90 closure time.
-- [ ] mart_resolution_times and mart_historical_status.
+- [x] mart_resolution_times with request-grain latest lifecycle dates, valid durations and exclusions.
+- [ ] mart_historical_status.
 - [ ] Streamlit dashboard for volumes, response performance and *observed* backlog.
-- [ ] Document denominator/grain assumptions and source population coverage.
+- [x] Document resolution-time mart grain, denominators, event-date eligibility and population coverage.
+- [ ] Extend denominator/grain/population contracts to remaining marts and dashboard.
 **Acceptance:** plots reproduce tested synthetic aggregates and never imply filtered data are whole-city totals.
+
+First M5 slice verified on 2026-10-24: `marts.mart_resolution_times` preserves
+latest lifecycle metrics and every request/exclusion row, adding usable NYC event
+dates, creation cohort month and additive population counters. Twenty-two offline
+cases and Ruff passed. A scoped fixture independently verifies 4 eligible / 2
+excluded durations, 13 total hours, mean 3.25, median 2 and p90 7.2. Copied-database
+builds passed 94 selected / 230 project dbt data tests and matched 518 request rows
+(498 eligible, 20 excluded). All prior base tables/BV outputs and replay provenance
+were unchanged. [Reporting contracts](REPORTING_CONTRACTS.md) define date/denominator/
+coverage limits. M5 remains in progress; request trends are the next slice.
 
 ## M6 — Public portfolio quality
 - [ ] CI pipeline runs lint/pytest/dbt build in offline demo mode.

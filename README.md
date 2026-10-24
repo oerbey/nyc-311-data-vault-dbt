@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. Marts and dashboard remain pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 has started with the resolution-time mart; other reporting marts and dashboard remain pending.**
 
 ## Project documentation
 
@@ -26,6 +26,27 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
 
 
+
+## Resolution-time mart — first M5 slice
+
+From `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_resolution_times
+```
+
+`marts.mart_resolution_times` publishes one row per source-scoped request, using
+its latest loaded lifecycle capture. It preserves dates, durations, quality flags
+and original provenance, and adds usable NYC event dates, creation cohort month,
+and additive request/eligible/excluded counters. Zero durations remain eligible;
+missing/invalid/reversed pairs retain their population rows and NULL valid durations.
+
+Always filter source/mode explicitly. `sum(duration_eligible_count)` is the
+mean/median/p90 duration denominator; `sum(request_count)` includes exclusions.
+Usable closure-date counts are a separate population. See the
+[reporting contract and example queries](docs/REPORTING_CONTRACTS.md) for grain,
+coverage, date interpretation, exclusion rules and verification. Current retained
+sample: 518 rows, 498 eligible durations and 20 exclusions. M5 remains in progress.
 
 ## Latest lifecycle duration metrics (2026-10-24)
 

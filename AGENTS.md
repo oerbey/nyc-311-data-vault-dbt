@@ -108,7 +108,7 @@ time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
 and preflight status/Hub integrity; no new refresh clock.
-M1 tooling and M6 CI/release tasks remain separately tracked. Marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+M1 tooling and M6 CI/release tasks remain separately tracked. The first resolution-time mart is implemented; remaining marts/dashboard are pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
 
 
 M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
@@ -123,4 +123,17 @@ measure; no SLA, response-time, closure-cycle or historical lifecycle as-of clai
 Late earlier captures never override later ones. Preflight validates loaded-only
 canonical keys/hash/parents and stored timestamp interpretation with existing staging
 macros; keep Raw Vault safeguards unchanged. Required M4 models/temporal checks are
-complete for retained evidence. M5 reporting marts are next; M1/M6 remain tracked.
+complete for retained evidence. M5 reporting is in progress; M1/M6 remain tracked.
+
+
+The first M5 model is marts.mart_resolution_times, a view publishing all latest
+lifecycle metrics at source-scoped request grain. Preserve every upstream field,
+original capture/load provenance and excluded request row. Valid NYC local event
+dates/cohort month are distinct from UTC/capture dates; invalid/DST-uncertain times
+have NULL reporting dates. request_count=1; duration eligible/ineligible counters
+partition the population; per-endpoint event counters are independent of duration
+validity. Retain zero, exclude unusable/negative pairs only from valid duration
+statistics. Never combine synthetic/live populations implicitly or infer resolution
+from status/closure absence. Follow docs/REPORTING_CONTRACTS.md for grain,
+denominators and sample coverage. Preflight rejects raw or BV drift before view
+replacement; Raw safeguards stay unchanged. M5 is incomplete; request trends follow.

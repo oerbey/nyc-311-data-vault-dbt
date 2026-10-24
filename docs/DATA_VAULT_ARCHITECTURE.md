@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Required M3 and M4 models/temporal checks implemented; M5 marts remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Required M3 and M4 models/temporal checks implemented; M5 resolution-time mart implemented; remaining reporting models/dashboard are proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -701,3 +701,22 @@ all 216 project dbt data tests passed. The current retained sample yields 518 ro
 were unchanged. Counts are evidence-specific, not permanent thresholds or citywide
 statistics. This completes the required M4 models/temporal checks for retained
 evidence. M5 marts are next; M1 tooling and M6 CI/release tasks remain separately tracked.
+
+## Implemented resolution-time mart (2026-10-24)
+
+`marts.mart_resolution_times` is a view over `bv_request_resolution_metrics` at one
+row per source-scoped request Hub identity and its latest loaded lifecycle capture.
+It preserves every upstream column and original provenance. It adds valid NYC
+creation/closure dates, creation cohort month and additive population/eligibility
+counters. Invalid/unknown/missing/negative rows stay in the request population;
+only valid, nonnegative pairs contribute duration measures. Event-date eligibility
+is independent per endpoint. All dates and month grouping use NYC wall-clock dates.
+
+Loaded corrections can restate current event/cohort dates; safe earlier captures do
+not override later ones. This is not an event ledger or historical lifecycle PIT.
+Preflight independently verifies complete unique BV coverage and measures against
+loaded Raw Vault/Hub evidence, reusing lifecycle canonical/typed safeguards.
+No new hashes/load clocks or Raw Vault changes are introduced. Each model commits
+independently. Source/mode and request/valid-duration/event populations remain explicit.
+See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for fields, denominator rules,
+commands, limitations and verified synthetic aggregates. M5 is not complete.

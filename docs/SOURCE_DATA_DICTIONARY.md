@@ -230,3 +230,17 @@ Due-date quality does not gate a valid creation/closure pair. This latest-captur
 source-date metric is independent of status, not an actual resolution guarantee,
 response-time, SLA or historical lifecycle as-of measure. See architecture for
 precise grain, validity limits, DST policy and examples.
+
+## Implemented resolution-time mart mapping
+
+`bv_request_resolution_metrics` maps unchanged into `marts.mart_resolution_times`,
+preserving all raw/typed attributes, signed/valid durations and original lineage.
+When the respective stored time status is valid, naive `created_at_nyc` /
+`closed_at_nyc` map to NYC `created_event_date_nyc` / `closed_event_date_nyc` DATEs;
+otherwise reporting dates are NULL. Creation's month start is
+`created_cohort_month_nyc`. UTC date casts are not equivalent near local midnight.
+`request_count=1` retains all Hub identities; duration eligible/ineligible counters
+partition that population by existing `is_duration_valid`. Each event eligibility
+counter depends only on its own usable date, independently of duration order or
+status. Counters are BIGINT; no source fields or hashes are added. See
+[REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for denominator/scope semantics.
