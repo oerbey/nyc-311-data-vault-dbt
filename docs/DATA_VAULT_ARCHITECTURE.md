@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Required M3 Raw Vault models and checks implemented, including agency details. Business Vault/PIT remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Required M3 models/checks and M4 observed status intervals implemented; bounded PIT/lifecycle metrics remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -419,6 +419,87 @@ This completes the required M3 Raw Vault models and checks. M4 begins with
 `bv_request_status_intervals`, followed by bounded snapshot-as-of PIT. No Business
 Vault intervals, PIT, metrics, scheduling or additional API extraction is implemented
 by this slice; broader foundation/CI milestones remain tracked separately.
+
+## Implemented observed status intervals (2026-10-24)
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +bv_request_status_intervals
+```
+
+`business_vault.bv_request_status_intervals` is a derived view with one row per
+Raw Vault status version, at `(request_hk, observed_from)` grain. `observed_from`
+is exactly `sat_request_status.snapshot_at_utc`; `next_observed_from` is the next
+retained capture for that source-scoped request, calculated with `LEAD`.
+
+Use the half-open predicate:
+
+```sql
+observed_from <= as_of_time
+and (next_observed_from is null or as_of_time < next_observed_from)
+```
+
+The new version applies at an exact boundary. Before the first observed capture,
+there is no matching interval: status is unknown. The final interval has NULL end,
+meaning last known reported state; it makes no claim about source freshness or
+continuous City-side status between captures. An observed NULL status has a row
+with NULL status and differs from no observation before first capture. NULL/blank,
+case, Unicode and reversals are retained without classification or carry-forward
+over an explicit missing value. Request creation/closure/resolution dates never
+backdate these intervals. A single live capture cannot reconstruct earlier backlog.
+
+The view preserves exact `status`, `hashdiff`, `batch_id`, `record_source`, `mode`,
+and original Satellite `load_dts_utc`. It assigns no new warehouse timestamp and
+changes no keys or Raw Vault rows. Boundaries and load times remain TIMESTAMPTZ;
+set `TimeZone='UTC'` to inspect UTC clock values. Select source/mode explicitly when
+reporting scoped synthetic/live populations.
+
+Endpoints reflect all currently loaded Raw Vault evidence. Accepted late versions
+can shorten/split a derived interval or establish an earlier first observation;
+original Raw Vault versions and warehouse metadata remain fixed. The view updates
+when the Satellite changes, without a separate view rebuild. Pending landing rows
+have no effect until Raw Vault loading succeeds. This is observed-time as-of
+reconstruction with current evidence; it is not a historical warehouse-knowledge
+as-of view. Upstream conflicting captures and late evidence requiring Raw Vault
+retractions remain blocked by existing guards.
+
+The normal dependency build loads upstream models first; each dbt model commits
+independently. Selecting only the interval view uses already loaded Raw Vault data.
+Its preflight rejects duplicate request/capture versions, missing key/time/provenance,
+invalid status hashes and missing/inconsistent request Hub parents. No version is
+silently dropped. Tests require exact source coverage/provenance, positive bounded
+intervals, no overlap/gaps between consecutive versions, and one unbounded latest
+interval per request. Raw Vault full-refresh protections remain in force; use the
+normal build command above.
+
+Inspect the deterministic Open → Closed → Open history in UTC:
+
+```sql
+set TimeZone = 'UTC';
+select h.request_bk, i.status, i.observed_from, i.next_observed_from
+from business_vault.bv_request_status_intervals i
+join raw_vault.hub_request h using (request_hk)
+where i.record_source = 'synthetic_311' and h.request_bk = 'DEMO-001'
+order by i.observed_from;
+```
+
+The fixture produces `[Feb 1 08:00, Feb 2 08:00)` Open,
+`[Feb 2 08:00, Feb 3 08:00)` Closed, then Open with a NULL end. These are observed
+boundaries, not authoritative source transition times.
+
+Verification on 2026-10-24: 17 new offline integration tests cover exact/intraday
+as-of boundaries, before-first capture, open-ended latest state, reversals, NULL/empty
+statuses, namespaces, UTC/DST/session independence, independent endpoints/provenance,
+late captures changing derived ends, dynamic view updates, replay, malformed Raw
+Vault input, upstream conflict/retraction guards and an empty fresh build.
+All 215 Python tests and Ruff passed. The copied-database dependency build passed
+68 dbt data tests; the full build passed 195. Independent Python reconstruction
+matched 520 intervals and 518 latest unbounded rows; every prior base table and
+replay row stayed unchanged. Counts describe current retained evidence, not thresholds.
+
+Only the first M4 slice is complete. Bounded `pit_request_status_asof`, lifecycle
+metrics, marts, scheduling and additional API extraction remain later work.
 
 ## Business Vault examples
 

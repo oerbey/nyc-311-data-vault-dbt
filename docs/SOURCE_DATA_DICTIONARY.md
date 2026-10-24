@@ -158,6 +158,21 @@ changes preserve renames, clearing and returns, with source-scoped identities an
 separate first warehouse load time. These feed labels do not establish legal agency
 names or source-side rename event dates.
 
+## Implemented observed status interval mapping
+
+`sat_request_status.snapshot_at_utc` maps directly to
+`business_vault.bv_request_status_intervals.observed_from`. The next loaded capture
+for that request maps to exclusive `next_observed_from`; the latest version has a
+NULL end. Exact nullable status/hashdiff and original batch/source/mode/load timestamp
+are projected unchanged. No source event dates or new hash inputs are introduced.
+
+As-of matching uses start-inclusive/end-exclusive boundaries, with no row before
+first capture. An observed NULL/blank status remains a version and never inherits
+a previous non-missing status. Latest open-ended means last known reported state,
+not source freshness. Late Raw Vault evidence revises derived endpoints automatically;
+warehouse-knowledge-time filtering and bounded PIT are separate future features.
+Pending landing observations cannot change intervals until Raw Vault loading succeeds.
+
 ## Sample source parameters
 
 ```python

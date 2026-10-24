@@ -1,7 +1,7 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging and required M3 Raw Vault models/checks implemented; Business Vault, PIT and analytics remain pending.
-**Updated:** 2026-10-22
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and M4 observed status intervals implemented; bounded PIT, lifecycle metrics and analytics remain pending.
+**Updated:** 2026-10-24
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -226,6 +226,22 @@ against temporary/copied databases. Independent history/hash/evidence checks mat
 four versions. Existing tables stayed unchanged. The required M3 models and tests
 are complete; M4 status intervals and PIT follow. M1 tooling and M6 CI/release tasks
 remain tracked separately.
+
+### Implemented first M4 slice (2026-10-24)
+
+`business_vault.bv_request_status_intervals` is a view over status Satellite
+versions. It preserves raw status/hash/batch/source/mode/first-load provenance and
+aliases capture time to inclusive `observed_from`; `LEAD` supplies exclusive
+`next_observed_from`, with NULL on the latest row. Before-first state is unknown;
+NULL source status is an observed missing value. Source event dates do not backdate
+history. Currently accepted late evidence can revise derived ends without changing
+Raw Vault rows. This is observed-time reconstruction, not warehouse-knowledge as-of.
+Structural/hash/parent preflight and coverage/interval tests reject invalid input.
+Seventeen new offline cases passed; all 215 Python tests and Ruff passed.
+Copied-database builds passed 68 selected and 195 full-project dbt data tests.
+Independent endpoint/provenance checks matched 520 intervals / 518 unbounded latest
+rows, preserving every prior base table and replay row. Bounded PIT and lifecycle
+metrics remain pending; M4 is not complete.
 
 ## 7. Business Vault and marts
 

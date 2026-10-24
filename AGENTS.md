@@ -83,5 +83,17 @@ adjacent rename/clearing/return versions and safe additive late evidence; block
 history rewrites, full refresh and schema changes. Each model commits independently.
 Observed feed labels are not authoritative legal names or rename event timestamps.
 
-The next slice is M4 `bv_request_status_intervals`, followed by bounded status PIT.
-M1 tooling and M6 CI/release tasks remain separately tracked. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+The first M4 model is a view: `business_vault.bv_request_status_intervals` reads
+only loaded Raw Vault status versions, preserves exact nullable status and original
+provenance/load timestamps, and projects capture time to `observed_from` with LEAD
+for exclusive `next_observed_from`. The last interval has NULL end. State before
+first capture is unknown; an observed NULL status is distinct from absence. Never
+backdate from source event dates or infer source freshness/continuous status from
+open ends. Accepted late Raw Vault versions can revise derived endpoints; this is
+current-evidence observed-time reconstruction, not warehouse-knowledge as-of.
+Selecting + dependencies loads Raw Vault first; view-only builds use loaded data.
+Preflight rejects duplicate/null/canonical-hash/Hub inconsistencies. Preserve the
+Raw Vault guards and timestamps; each dbt model commits independently.
+
+The next slice is bounded `pit_request_status_asof`; lifecycle metrics follow.
+M1 tooling and M6 CI/release tasks remain separately tracked. Status PIT, lifecycle metrics and marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
