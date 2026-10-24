@@ -95,5 +95,17 @@ Selecting + dependencies loads Raw Vault first; view-only builds use loaded data
 Preflight rejects duplicate/null/canonical-hash/Hub inconsistencies. Preserve the
 Raw Vault guards and timestamps; each dbt model commits independently.
 
-The next slice is bounded `pit_request_status_asof`; lifecycle metrics follow.
-M1 tooling and M6 CI/release tasks remain separately tracked. Status PIT, lifecycle metrics and marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+Bounded `business_vault.pit_request_status_asof` is implemented as a view over
+loaded request Hubs and status intervals. Grain is request_hk + as_of_utc, including
+unknown rows before first capture or for Hub-only identities. is_status_observed
+separates unknown from observed NULL status; preserve original version pointers,
+namespace/mode and Raw first-load timestamps. Default calendar is distinct loaded
+status-version captures, not every unchanged landing capture or a daily calendar.
+Optional pit_status_as_of_instants requires explicit timezone-aware ISO strings;
+normalize/deduplicate absolute instants, reject naive/invalid input. Cap calendars
+at 366 instants and global Hub/calendar grids at 1,000,000 rows, at build and query
+time; fail rather than truncating. Rebuild to change explicit configuration.
+Accepted late Raw evidence revises current-evidence PIT answers dynamically;
+never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
+and preflight status/Hub integrity; no new refresh clock. Lifecycle metrics are next.
+M1 tooling and M6 CI/release tasks remain separately tracked. Lifecycle metrics and marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.

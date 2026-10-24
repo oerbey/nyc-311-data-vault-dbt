@@ -195,3 +195,20 @@ params = {
 ```
 
 This is an **illustrative** first-page request, not a complete ingestion algorithm. Implement pagination, consistent cohort refresh, completeness audit, retries and explicit source schema verification. A Socrata app token is optional for public reads; keep it only in local environment variables.
+
+## Implemented bounded status PIT mapping
+
+The PIT calendar maps to timezone-aware `as_of_utc`. Default membership is distinct
+loaded `sat_request_status.snapshot_at_utc`, not all landing captures or source
+event dates; explicit timezone-aware instants can replace it. Maximum 366 instants
+and 1,000,000 Hub/calendar rows apply at build and query time.
+`hub_request` supplies namespace/mode and one row per identity/calendar instant.
+The interval containing the instant supplies `status_snapshot_at_utc`,
+`status_load_dts_utc`, `status_hashdiff`, `status_batch_id`, and exact nullable
+`status`. The first two reference capture and original first warehouse load,
+respectively; they are never interchangeable. Unknown before first capture (or a
+Hub with no status version) has `is_status_observed=false` and NULL status fields.
+Observed NULL status has the flag true and retains its version provenance.
+No new hashes, event-time interpretation or warehouse refresh timestamp is introduced.
+See the architecture's bounded PIT section for configuration and current-evidence
+late-arrival semantics; this is not historical warehouse-knowledge reconstruction.

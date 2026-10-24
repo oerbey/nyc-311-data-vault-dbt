@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. The first M4 model, observed status intervals, is implemented. Bounded PIT, lifecycle metrics, marts and dashboard remain pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals and bounded status PIT are implemented. Lifecycle metrics, marts and dashboard remain pending.**
 
 ## Project documentation
 
@@ -24,6 +24,90 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 ## Stack (planned)
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
+
+
+## Bounded observed status PIT (2026-10-24)
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +pit_request_status_asof
+```
+
+`business_vault.pit_request_status_asof` is a view at `(request_hk, as_of_utc)`
+grain. Every loaded request Hub identity crosses the chosen calendar, including
+identities not yet observed at that instant. The start-inclusive/end-exclusive
+interval join selects one applicable status version, preserving exact nullable
+`status`, `status_hashdiff`, `status_batch_id`, `status_snapshot_at_utc` and original
+`status_load_dts_utc`. `record_source` and `mode` come from the Hub even for unknown
+rows. The version reference is `(request_hk, status_snapshot_at_utc)`; load time is
+provenance, not the ordering key. No PIT refresh/load clock is assigned.
+
+`is_status_observed=false` means no loaded version exists at/before the instant;
+all five status/version fields are NULL. An observed NULL status has the flag true
+and non-NULL version pointers. No source creation/closure date backdates status.
+An open-ended last state makes no freshness claim. Filter source/mode explicitly
+when reporting; the global calendar intentionally includes unknown rows across
+source populations. Hub-only identities also remain unknown.
+
+By default the calendar contains **distinct loaded status-version capture instants**,
+across namespaces. It is not a daily calendar and does not include every unchanged
+landing capture. Empty Raw status history yields an empty default calendar. It
+never extends to the current clock automatically. To choose a smaller reporting
+calendar or inspect before-first/intraday times, supply a controlled list:
+
+```bash
+dbt build --profiles-dir . --select +pit_request_status_asof \
+  --vars '{pit_status_as_of_instants: ["2026-01-31T00:00:00Z", "2026-02-02T08:00:00Z", "2026-02-03T08:00:00Z"]}'
+```
+
+Each input must be an ISO timestamp with seconds and an explicit `Z` or numeric
+offset (up to six fractional-second digits). Naive/date-only/invalid inputs fail;
+SQL literals are emitted only after parsing/normalization. Equivalent instants are
+deduplicated in UTC. `[]` explicitly creates an empty PIT; omitted/null uses the
+default. Maximum input/default calendar: **366 instants**; maximum entire Hub ×
+calendar grid: **1,000,000 rows**. Oversized builds fail before replacing the view,
+and query-time checks also reject growth beyond these bounds. Select fewer explicit
+instants when the default exceeds the limits; no rows are silently truncated.
+Calendar configuration is embedded in the view: rebuild it to change configuration.
+
+All three time columns are TIMESTAMPTZ. Offset-equivalent instants and DST crossings
+use absolute instants, independently of DuckDB's display timezone. The view reflects
+accepted late Raw Vault versions without rebuilding and may revise prior as-of
+answers; default calendar membership can grow with Raw captures. Pending landing
+rows have no effect until loaded. This is **current-evidence observed-time**
+reconstruction, not historical warehouse-knowledge or authoritative NYC event history.
+The two timestamps do not implement bitemporal knowledge filtering.
+
+Preflight reuses status structural/hash/parent safeguards and additionally requires
+unique canonical Hub identities/provenance, including Hubs with no status. Upstream
+Raw Vault guards remain unchanged. Each dbt model commits independently. A normal
+`+` build loads dependencies; selecting only the PIT uses already loaded data.
+Derived views are rebuildable; Raw Vault full-refresh protections still apply.
+
+Inspect the synthetic request's accumulated observations:
+
+```sql
+set TimeZone = 'UTC';
+select h.request_bk, p.as_of_utc, p.is_status_observed, p.status,
+       p.status_snapshot_at_utc, p.status_batch_id, p.status_load_dts_utc
+from business_vault.pit_request_status_asof p
+join raw_vault.hub_request h using (request_hk)
+where p.record_source = 'synthetic_311' and h.request_bk = 'DEMO-001'
+order by p.as_of_utc;
+```
+
+Verified offline: 22 PIT integration cases cover independent version selection,
+unknown/NULL/blank/Unicode, reversals, exact/microsecond/intraday/DST boundaries,
+namespaces, safe late arrivals, landing-only isolation, replay/load provenance,
+empty/explicit/default/duplicate-offset/future calendars, invalid inputs, both
+size limits (including query-time growth), corrupt inputs, Hub-only identities,
+and the 366-instant boundary. Ruff passed. The copied-database build passed all
+203 project dbt data tests, including an independent latest-capture comparison.
+The default calendar currently has four instants and produces 2,072 rows: 527
+observed and 1,545 unknown. All prior base tables and replay results were unchanged.
+Counts describe retained evidence, not permanent thresholds. Lifecycle duration
+metrics are next; M4 remains incomplete. No new extraction or mart is added.
 
 ## Observed status intervals — first M4 slice
 

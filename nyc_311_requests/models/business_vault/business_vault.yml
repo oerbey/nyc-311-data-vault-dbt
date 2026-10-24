@@ -44,3 +44,43 @@ models:
   - name: status
     description: Exact nullable Raw Vault status. NULL is an observed missing value;
       no taxonomy or classification is applied.
+- name: pit_request_status_asof
+  description: Bounded observed-time status PIT view, grain request_hk + as_of_utc.
+    All loaded request identities cross the selected calendar. Unknown rows have
+    is_status_observed=false and NULL version fields; observed NULL status is known.
+    This reconstructs current evidence, not historical warehouse knowledge or City events.
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: as_of_utc
+    description: Timezone-aware calendar instant, never implicitly a local date.
+    data_tests:
+    - not_null
+  - name: record_source
+    data_tests:
+    - not_null
+  - name: mode
+    data_tests:
+    - not_null
+  - name: is_status_observed
+    data_tests:
+    - not_null
+  - name: status_snapshot_at_utc
+    description: Applicable status version capture; NULL before first observation.
+  - name: status_load_dts_utc
+    description: Original applicable Raw Vault version first-load timestamp; no PIT load clock.
+  - name: status_hashdiff
+    description: Original status hashdiff; NULL only when no version is known.
+  - name: status_batch_id
+    data_tests:
+    - relationships:
+        arguments:
+          to: source('landing', 'ingestion_batch')
+          field: batch_id
+  - name: status
+    description: Exact nullable source status; consult is_status_observed for unknown state.
