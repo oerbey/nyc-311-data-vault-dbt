@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Landing/staging, all Hubs/assignment Links, status/lifecycle/resolution/location Satellites and assignment effectivity verified; agency details remain pending. Track checked boxes only after verification.
+**Status:** Required M3 Raw Vault models/checks complete, including agency details. Business Vault/PIT remain pending; broader foundation/CI tasks remain tracked separately.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -51,13 +51,13 @@ Staging slice verified on 2026-10-18: `staging.stg_311_request_snapshots` is a v
 - [x] Implement insert-only lifecycle Satellite with raw dates and typed quality provenance.
 - [x] Implement insert-only resolution Satellite with exact text, raw/typed update dates and quality provenance.
 - [x] Implement insert-only location Satellite with exact borough/ZIP/community-board history.
-- [ ] Implement agency-details Satellite.
+- [x] Implement insert-only agency-details Satellite with cross-request agreement and stable evidence.
 - [x] Implement insert-only effectivity for changing Links.
 - [x] Verify request/status replay, reversals, NULL transitions, safe late arrivals, conflicting captures and full-refresh protection.
 - [x] Verify Link identity under reassignment, return, late evidence, incomplete keys and replay.
 - [x] Verify activation/deactivation history, returns, independent missing-key timelines, replay and late-history safeguards.
 - [x] Add request/status relationships, uniqueness, provenance, canonical hash and expected change-history tests.
-- [ ] Extend tests to remaining Vault models.
+- [x] Verify all required Raw Vault models, immutable replay and temporal edge cases.
 **Acceptance:** no existing business keys or unmodified Satellites duplicate on replay; changed relationships and states remain historically reconstructible.
 
 Request/status slice verified on 2026-10-18: 12 new offline integration tests independently reproduce UTF-8 SHA-256 encoding, isolate synthetic/live request identities, preserve leading zeroes and NULL/empty distinctions, retain Open → Closed → Open, keep original warehouse timestamps/provenance on replay, append safe late boundaries, and reject ties/backfills/full-refresh operations requiring historical mutation. The dependency build passes all 58 dbt data tests against a copy of the current database. The current data produces 518 request Hub identities and 520 status versions. Only the first M3 slice is complete; other Hubs/Links/Satellites, effectivity and M4 remain pending. Backfills requiring retraction need a separately validated reconstruction, not an in-place update.
@@ -109,6 +109,20 @@ dbt data tests. Independent Python history/hashes matched 518 source-derived
 versions; all prior base tables and replay metadata remained unchanged. Agency
 details remain pending, so M3 is not complete. No API extraction or Business Vault
 model was added.
+
+Agency-details slice / M3 verified on 2026-10-22: source-scoped agency-name
+versions coalesce agreeing observations across requests/batches, select deterministic
+supporting evidence, preserve exact nullable names, and reject conflicting capture
+ties. Missing keys stay flagged/excluded; valid agencies with missing names or
+categories remain eligible. Eighteen new offline tests cover names, namespaces,
+provenance, renames/clearing/reversals, intraday/as-of boundaries, replay, late evidence,
+parent/schema/refresh guards, failed/running exclusion, rollback and a fresh build
+requiring only the agency Hub. All 198 Python tests and Ruff passed. Copied-database
+builds passed 67 selected and 185 full-project dbt data tests; independent Python
+history/hash/evidence reconstruction matched four versions. All prior base tables
+and replay metadata were unchanged. Required M3 models/checks are complete for
+retained synthetic/bounded-live evidence. No M4/PIT/metric or API extraction was
+added; M1/M6 foundation/CI tasks remain separately tracked.
 
 ## M4 — Business Vault / temporal semantics
 - [ ] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.

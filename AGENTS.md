@@ -71,4 +71,17 @@ parents, schema/full-refresh changes and historical rewrites fail; additive safe
 late boundaries append. Each dbt model commits independently. Observed corrections
 do not establish physical movement or location at earlier source event dates.
 
-The next Vault slice is agency details. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+Agency details complete the required M3 models/checks. The Satellite uses existing
+source-scoped agency identity and exact nullable name hashdiff domain `agency_details`.
+Every eligible request observation for one agency/capture must agree, including
+NULL/blank distinctions. Reject conflicts rather than choosing a majority/populated
+name. Coalesce agreeing ties by batch ID then exact request key; retain original
+`evidence_request_bk`, batch and load timestamps on replay. Missing agency keys remain
+flagged/excluded; missing names or categories do not suppress an eligible agency.
+All eligible observations require consistent Hub business key/source/mode. Preserve
+adjacent rename/clearing/return versions and safe additive late evidence; block
+history rewrites, full refresh and schema changes. Each model commits independently.
+Observed feed labels are not authoritative legal names or rename event timestamps.
+
+The next slice is M4 `bv_request_status_intervals`, followed by bounded status PIT.
+M1 tooling and M6 CI/release tasks remain separately tracked. Business Vault/PIT/marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
