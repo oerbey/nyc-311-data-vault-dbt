@@ -107,5 +107,20 @@ at 366 instants and global Hub/calendar grids at 1,000,000 rows, at build and qu
 time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
-and preflight status/Hub integrity; no new refresh clock. Lifecycle metrics are next.
-M1 tooling and M6 CI/release tasks remain separately tracked. Lifecycle metrics and marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+and preflight status/Hub integrity; no new refresh clock.
+M1 tooling and M6 CI/release tasks remain separately tracked. Marts are not implemented. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+
+
+M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
+a view at one row per request Hub, using the latest loaded lifecycle capture, not
+warehouse load time. Preserve every selected raw/typed attribute, quality flag and
+original provenance/load timestamp; Hub-only lifecycle state is explicitly unknown.
+Signed reported_closure_elapsed_hours keeps negative diagnostics; resolution_hours
+and resolution_days require usable nonnegative creation/closure UTC pairs. Preserve
+missing/invalid/DST uncertainty and clearing; never impute or clamp to zero. Days
+mean hours/24. Due-date quality and reported status do not gate this source-date
+measure; no SLA, response-time, closure-cycle or historical lifecycle as-of claims.
+Late earlier captures never override later ones. Preflight validates loaded-only
+canonical keys/hash/parents and stored timestamp interpretation with existing staging
+macros; keep Raw Vault safeguards unchanged. Required M4 models/temporal checks are
+complete for retained evidence. M5 reporting marts are next; M1/M6 remain tracked.

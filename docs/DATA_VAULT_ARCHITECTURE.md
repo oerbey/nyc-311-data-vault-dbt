@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Required M3 models/checks and M4 observed status intervals and bounded PIT implemented; lifecycle metrics remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Required M3 and M4 models/temporal checks implemented; M5 marts remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -517,7 +517,7 @@ from {{ ref('sat_request_status') }}
 As-of validity uses `observed_from <= as_of_ts AND (as_of_ts < next_observed_from OR next_observed_from IS NULL)`. Before the first observed snapshot, status is **unknown** (not assumed to be Pending).
 
 - `pit_request_status_asof`: one per request_hk + bounded as-of timestamp; contains the applicable Satellite version reference. Prefer a controlled set of snapshot dates/times.
-- `bv_request_resolution_metrics`: one per request at selected as-of timestamp if querying historical state, or one per current request for latest metrics; never mix both grains without identifying as-of.
+- `bv_request_resolution_metrics`: implemented at one row per request Hub identity, using its latest loaded lifecycle capture. Historical lifecycle as-of metrics remain a separate future feature; do not mix these grains.
 - `mart_request_trends`: created events and closed events based on respective event dates. An agency assigned **today** should not be presented as the authoritative historical agency at the earlier event date unless source evidence supports it.
 - `mart_historical_status`: observed backlog of **sampled cohort** and coverage metrics since snapshot collection began, not an exact citywide historical open count.
 
@@ -621,3 +621,83 @@ The default calendar currently has four instants and produces 2,072 rows: 527
 observed and 1,545 unknown. All prior base tables and replay results were unchanged.
 Counts describe retained evidence, not permanent thresholds. Lifecycle duration
 metrics are next; M4 remains incomplete. No new extraction or mart is added.
+
+## Latest lifecycle duration metrics (2026-10-24)
+
+From `nyc_311_requests`, after landing ingestion:
+
+```bash
+dbt build --profiles-dir . --select +bv_request_resolution_metrics
+```
+
+`business_vault.bv_request_resolution_metrics` is a view with **one row per request
+Hub identity**, selecting the lifecycle version with greatest `snapshot_at_utc`.
+This is latest loaded capture state, with no historical as-of grain or current-clock
+calculation. A later warehouse load of an earlier capture cannot override the latest
+capture. A new latest capture, including closure-date clearing, updates the existing
+view without rebuilding; landing-only changes do not. Retained historical Raw Vault
+versions remain intact. For historical status use the separate bounded status PIT;
+its status pointer must not be used as a lifecycle pointer.
+
+The view preserves original request business key/source/mode and the selected Raw
+Vault lifecycle row's raw strings, typed NYC/UTC dates, per-field quality flags,
+`hashdiff`, `batch_id`, capture and original `load_dts_utc`. It assigns no new load
+clock or hashes. A Hub with no lifecycle version has `is_lifecycle_observed=false`,
+NULL lifecycle fields and no duration. The latest version's capture is not the last
+unchanged landing capture or proof of source freshness.
+
+| Field | Definition |
+|---|---|
+| `is_duration_evaluable` | Both creation and closure have usable UTC instants; can include negative pairs |
+| `reported_closure_elapsed_hours` | Signed `(closed_at_utc - created_at_utc)` in elapsed hours; negative values retained diagnostically |
+| `is_duration_valid` | Both endpoints usable and closure >= creation |
+| `resolution_hours` | Signed elapsed hours only when valid; otherwise NULL |
+| `resolution_days` | Valid hours / 24; elapsed 24-hour days, not calendar/business days |
+| `duration_quality_status` | Priority: lifecycle_unobserved, missing_created, unusable_created, missing_closed, unusable_closed, closed_before_created, valid |
+
+Durations use UTC instants derived under the existing **America/New_York** source
+interpretation. Spring/fall transitions therefore use actual elapsed time. Invalid,
+missing, ambiguous-fold and nonexistent-gap endpoints remain unresolved, never
+imputed or guessed. Reversed pairs retain signed hours and their original chronology
+flag; valid-duration columns are NULL rather than clamped to zero. Exactly equal
+endpoints produce valid zero. Subsecond precision survives the calculation.
+The summary quality field prioritizes creation issues; original per-field flags
+preserve all simultaneous issues. A bad/missing due date can set the inherited
+lifecycle quality flag while a creation/closure duration remains valid.
+
+These are **reported creation-to-closure durations**, independent of reported status.
+A populated closure date can coexist with an Open status; it still yields a date-based
+measure. A missing closure is not evidence that a request is open. The measure does
+not validate actual resolution, calculate response time, reconstruct closure/reopen
+cycles, sum time in status, or implement an SLA. Due dates, resolution-action dates,
+warehouse load clocks and capture times are not substituted for closure/creation.
+Validity tests only endpoint usability/order; no source truth or freshness is implied.
+
+View preflight checks all loaded lifecycle versions for unique keys/captures,
+canonical hashes, required metadata, consistent Hub identities/namespace/mode and
+stored timestamp/quality interpretation. It reuses the staging parsing/DST policy
+against stored raw strings without reading pending landing evidence. Corruption
+fails before replacing the view. Original Raw Vault conflict/retraction/full-refresh
+safeguards remain unchanged; dependencies commit independently. Selecting only the
+metric view uses already loaded Raw Vault data. Use normal builds for dependencies.
+
+```sql
+set TimeZone = 'UTC';
+select request_bk, record_source, snapshot_at_utc, created_date, closed_date,
+       duration_quality_status, reported_closure_elapsed_hours, resolution_hours
+from business_vault.bv_request_resolution_metrics
+where record_source = 'synthetic_311'
+order by request_bk;
+```
+
+Verified offline: 34 new integration cases cover Python duration/provenance
+reconstruction, zero/subsecond/negative durations, spring/fall elapsed time,
+missing/blank/invalid/fold/gap endpoints, due-only quality, closure clearing,
+corrections, namespaces, intraday latest ordering, replay, pending/late captures,
+Hub-only/empty states, corrupt-input preflight and existing conflict/retraction
+protection. Ruff passed. The copied-database dependency build passed 80 data tests;
+all 216 project dbt data tests passed. The current retained sample yields 518 rows:
+498 valid durations and 20 missing closures. All prior base tables and replay results
+were unchanged. Counts are evidence-specific, not permanent thresholds or citywide
+statistics. This completes the required M4 models/temporal checks for retained
+evidence. M5 marts are next; M1 tooling and M6 CI/release tasks remain separately tracked.

@@ -212,3 +212,21 @@ Observed NULL status has the flag true and retains its version provenance.
 No new hashes, event-time interpretation or warehouse refresh timestamp is introduced.
 See the architecture's bounded PIT section for configuration and current-evidence
 late-arrival semantics; this is not historical warehouse-knowledge reconstruction.
+
+## Implemented lifecycle duration metric mapping
+
+Latest `sat_request_lifecycle.snapshot_at_utc` per request supplies all raw/typed
+lifecycle fields and original capture/hash/batch/load provenance to
+`business_vault.bv_request_resolution_metrics`. Request Hub supplies identity,
+namespace/mode and a row even when lifecycle is not loaded. No event date backdates
+capture and no warehouse-load ordering or new metric refresh clock is introduced.
+`reported_closure_elapsed_hours` subtracts usable `created_at_utc` from
+`closed_at_utc` as signed elapsed hours. Nonnegative usable pairs populate
+`resolution_hours` and `resolution_days` (hours / 24); unusable/reversed pairs have
+NULL valid-duration measures. Original per-field and chronology flags are preserved;
+`duration_quality_status` prioritizes unknown, creation issues, closure issues,
+negative order, then valid. Observed missing values differ from unloaded lifecycle.
+Due-date quality does not gate a valid creation/closure pair. This latest-capture
+source-date metric is independent of status, not an actual resolution guarantee,
+response-time, SLA or historical lifecycle as-of measure. See architecture for
+precise grain, validity limits, DST policy and examples.

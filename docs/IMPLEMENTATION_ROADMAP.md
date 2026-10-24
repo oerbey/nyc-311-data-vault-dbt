@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 models/checks complete; M4 observed status intervals and bounded PIT verified. Lifecycle metrics remain pending; foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 marts are next; foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -127,10 +127,10 @@ added; M1/M6 foundation/CI tasks remain separately tracked.
 ## M4 — Business Vault / temporal semantics
 - [x] Build bv_request_status_intervals with LEAD and non-overlapping observed validity.
 - [x] Build bounded pit_request_status_asof.
-- [ ] Build request lifecycle duration metrics with source local-time conversion.
+- [x] Build request lifecycle duration metrics with source local-time conversion.
 - [x] Verify status-interval before-first/exact-boundary/intraday/late-capture behavior and timezone independence.
 - [x] Extend temporal and DST checks to bounded PIT.
-- [ ] Extend temporal and DST checks to lifecycle metrics.
+- [x] Extend temporal and DST checks to lifecycle metrics.
 **Acceptance:** as-of results match deterministic fixtures; do not pretend to reconstruct pre-capture status history.
 
 Observed status intervals verified on 2026-10-24: the Business Vault view projects
@@ -228,6 +228,17 @@ The default calendar currently has four instants and produces 2,072 rows: 527
 observed and 1,545 unknown. All prior base tables and replay results were unchanged.
 Counts describe retained evidence, not permanent thresholds. Lifecycle duration
 metrics are next; M4 remains incomplete. No new extraction or mart is added.
+
+Lifecycle metrics / M4 verified on 2026-10-24: latest-capture source-date durations
+retain signed diagnostic hours and expose valid hours/24-hour days only for usable,
+nonnegative creation/closure pairs. Unknown/missing/invalid/DST-uncertain values
+remain explicit; due-date quality and status do not gate durations. Thirty-four new
+offline cases and Ruff passed. The copied-database build passed 80 selected / 216
+full-project dbt data tests. Independent Python reconstruction matched 518 rows
+(498 valid, 20 missing closure). Every prior base table and replay result remained
+unchanged. Required M4 models/temporal checks are complete for retained evidence;
+historical lifecycle as-of metrics, response-time/SLA analysis and marts are outside
+this slice. No new extraction was performed. M1/M6 tasks remain separately tracked.
 
 ## M5 — Marts + dashboard
 - [ ] mart_request_trends with created and closed event metrics.
