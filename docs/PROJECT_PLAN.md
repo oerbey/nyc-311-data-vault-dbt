@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time mart implemented; remaining marts and dashboard are pending.
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time and request-trend marts implemented; remaining marts and dashboard are pending.
 **Updated:** 2026-10-24
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
@@ -355,7 +355,7 @@ models/temporal checks are complete for retained evidence; M5 marts are next.
 **Marts and grain**
 | Mart | Grain | Main metrics |
 |---|---|---|
-| `mart_request_trends` | date + agency + problem + borough | Created count; closed count from **events**, separate date measures |
+| `mart_request_trends` | source + mode + NYC event date + lifecycle-capture observed agency/problem/borough | Implemented: separate usable creation/closure contributions, explicit observed-context attribution and audit population/events |
 | `mart_agency_performance` | agency + cohort/month | Volume, closed share at defined extract/as-of, median/p90 closure time |
 | `mart_resolution_times` | source-scoped request_hk, latest loaded lifecycle capture | Implemented: raw/typed dates, valid durations, quality/provenance, NYC event dates and population/eligibility counters |
 | `mart_historical_status` | snapshot as-of date + agency + status | Observed open/in-progress/closed counts; only **from first snapshot forward** |
@@ -372,6 +372,20 @@ remain separate; capture dates are not event dates. Twenty-two offline cases and
 Ruff passed; copied-database builds passed 230 dbt tests. Independent date/counter/
 provenance reconstruction matched 518 rows (498 eligible durations, 20 exclusions).
 Prior base tables/BV outputs and mart replay stayed unchanged. M5 remains in progress.
+
+### Implemented second M5 slice (2026-10-24)
+
+`mart_request_trends` groups usable source creation/closure dates independently,
+with exact coherent context from each selected lifecycle version's supporting
+successful landing row. `dimension_basis=lifecycle_capture` makes attribution
+explicit; this is not authoritative event-time or latest assignment. Population
+and event views retain exclusions and request-level lineage. Source corrections
+can restate derived trends; assignment-only changes and safe earlier captures
+cannot override selected context. Twenty-two offline cases and Ruff passed;
+copied builds passed 256 dbt tests, independently matching 267 groups with 518
+creation and 498 closure contributions. Prior base/BV/resolution-mart data and
+replay remained unchanged. See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md).
+M5 remains in progress; agency performance is next.
 
 ## 8. Data tests and tricky history scenarios
 

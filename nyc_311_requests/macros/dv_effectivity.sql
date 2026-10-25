@@ -35,8 +35,19 @@ from events
     {% for kind in ['agency', 'problem'] %}
         {% set existing = none %}
         {% if execute %}
-            {% set existing = adapter.get_relation(database=this.database, schema='raw_vault',
-                identifier='sat_lnk_request_' ~ kind ~ '_effectivity') %}
+            {# The shared adapter cache can advertise another thread's uncommitted
+               first CREATE. Check this connection's visible catalog instead. #}
+            {% set identifier = 'sat_lnk_request_' ~ kind ~ '_effectivity' %}
+            {% set visibility_sql %}
+                select 1 from information_schema.tables
+                where table_catalog='{{ this.database | replace("'", "''") }}'
+                  and table_schema='raw_vault' and table_name='{{ identifier }}'
+            {% endset %}
+            {% set visible = run_query(visibility_sql) %}
+            {% if visible is not none and visible.rows | length > 0 %}
+                {% set existing = api.Relation.create(database=this.database,
+                    schema='raw_vault', identifier=identifier, type='table') %}
+            {% endif %}
         {% endif %}
         {% if existing is not none %}
         when exists (

@@ -1,0 +1,85 @@
+version: 2
+models:
+- name: int_request_trend_population
+  description: One row per retained request, preserving resolution mart fields and
+    exact agency/problem/borough from its selected lifecycle landing evidence.
+    Context is observed at lifecycle capture, not an authoritative event-time or
+    current assignment. Excluded endpoints and missing labels remain inspectable.
+  columns:
+  - name: request_hk
+    data_tests: [not_null, unique]
+  - name: record_source
+    data_tests: [not_null]
+  - name: mode
+    data_tests: [not_null]
+  - name: is_dimension_observed
+    data_tests: [not_null]
+  - name: has_missing_agency
+    data_tests: [not_null]
+  - name: has_missing_problem
+    data_tests: [not_null]
+  - name: has_missing_borough
+    data_tests: [not_null]
+  - name: dimension_batch_id
+    description: Original selected lifecycle batch; NULL for unloaded lifecycle.
+  - name: dimension_snapshot_at_utc
+    description: Observation of dimension context; never backdated to source events.
+  - name: observed_agency_bk
+    description: Exact nullable source agency text from lifecycle evidence, including blanks.
+  - name: observed_complaint_type
+    description: Exact nullable source category from the same observation as agency.
+  - name: observed_borough
+    description: Exact nullable source borough from the same observation.
+- name: int_request_trend_events
+  description: One row per request_hk + event_type with a usable NYC event date.
+    Created and closed eligibility are independent; a usable closure is retained
+    even when creation is missing or the pair is reversed. No closure-cycle ledger.
+  columns:
+  - name: request_hk
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('hub_request')
+          field: request_hk
+  - name: record_source
+    data_tests: [not_null]
+  - name: mode
+    data_tests: [not_null]
+  - name: event_type
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values: [created, closed]
+  - name: event_date_nyc
+    data_tests: [not_null]
+  - name: dimension_batch_id
+    data_tests: [not_null]
+  - name: dimension_snapshot_at_utc
+    data_tests: [not_null]
+  - name: load_dts_utc
+    description: Original lifecycle first warehouse load timestamp, not a report clock.
+    data_tests: [not_null]
+- name: mart_request_trends
+  description: Observed rows only, grain source + mode + NYC event date + exact
+    lifecycle-capture agency/problem/borough. Created and closed source-event
+    counts use independent usable endpoint populations. No date spine, inferred
+    zero-coverage days, backlog, historical assignment or citywide completeness.
+  columns:
+  - name: record_source
+    data_tests: [not_null]
+  - name: mode
+    data_tests: [not_null]
+  - name: event_date_nyc
+    data_tests: [not_null]
+  - name: dimension_basis
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values: [lifecycle_capture]
+  - name: created_request_count
+    data_tests: [not_null]
+  - name: closed_request_count
+    data_tests: [not_null]
