@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend and agency/cohort performance marts are implemented; historical status and dashboard remain pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; the dashboard remains pending.**
 
 ## Project documentation
 
@@ -27,6 +27,31 @@ Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions
 
 
 
+## Historical observed status — fourth M5 slice
+
+From `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_historical_status
+```
+
+`marts.mart_historical_status` counts retained request identities by bounded UTC
+as-of instant, source/mode, last observed agency and exact reported status. The
+supporting request/as-of population retains independent status/agency capture,
+batch and first-load lineage. Unknown status, observed NULL and blank status are
+separate; missing agency observations never end a known assignment. Only exact
+`Open`, `In Progress` and `Closed` labels receive those named categories; all other
+labels stay visible. This is observed-time reconstruction from retained evidence.
+
+The default calendar contains four loaded status-change capture instants: 518
+identities per instant, 2,072 population rows and 20 report groups. The population
+includes identities not yet observed at earlier instants. It is not historical
+citywide backlog. Agency-only captures do not add default calendar instants; use
+`pit_status_as_of_instants` and rebuild `+` dependencies for another bounded calendar.
+See [reporting contracts](docs/REPORTING_CONTRACTS.md#historical-observed-status)
+for denominators, query examples and coverage limits. M5 remains in progress;
+the Streamlit dashboard is next.
+
 ## Agency/cohort performance — third M5 slice
 
 From `nyc_311_requests`:
@@ -46,7 +71,7 @@ Current retained sample: four groups, 518 requests, 498 usable closure dates and
 498 eligible durations. Closure-date coverage and valid-duration coverage have
 separate numerators and an explicit retained-request denominator. See the
 [reporting contract](docs/REPORTING_CONTRACTS.md) for definitions, interpolation,
-exclusions and comparison limits. M5 remains in progress; historical status is next.
+exclusions and comparison limits. M5 remains in progress; the Streamlit dashboard is next.
 
 ## Request-event trends — second M5 slice
 

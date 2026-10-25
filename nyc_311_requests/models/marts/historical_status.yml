@@ -1,0 +1,62 @@
+version: 2
+models:
+- name: int_request_historical_status_population
+  description: One retained Hub identity per bounded PIT instant. Status and agency
+    are independently last observed as of capture time. Before first evidence each
+    is unknown; observed NULL status is distinct. Agency is carried through missing
+    assignments. All original status and agency activation lineage is retained.
+  columns:
+  - name: request_hk
+    data_tests: [not_null]
+  - name: as_of_utc
+    data_tests: [not_null]
+  - name: is_status_observed
+    data_tests: [not_null]
+  - name: is_agency_observed
+    data_tests: [not_null]
+  - name: status_class
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values: [unobserved, observed_null, observed_blank, open, in_progress, closed, other]
+- name: mart_historical_status
+  description: Observed-time status counts by UTC PIT instant, source/mode, exact
+    source-scoped agency (including unknown) and exact nullable status plus observation
+    flag. Not event-time history, source-change timestamps, continuous freshness or
+    citywide backlog. Calendar defaults to loaded status-change captures; agency-only
+    changes need explicit as-of instants. Counts cannot be summed across instants.
+  columns:
+  - name: as_of_utc
+    data_tests: [not_null]
+  - name: record_source
+    data_tests: [not_null]
+  - name: mode
+    data_tests: [not_null]
+  - name: is_agency_observed
+    data_tests: [not_null]
+  - name: is_status_observed
+    data_tests: [not_null]
+  - name: status_class
+    description: Only exact Open / In Progress / Closed map to named categories.
+      Other labels remain other; NULL/blank/unobserved are separate. Raw status is preserved.
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values: [unobserved, observed_null, observed_blank, open, in_progress, closed, other]
+  - name: dimension_basis
+    data_tests:
+    - accepted_values:
+        arguments:
+          values: [observed_asof]
+  - name: request_count
+    data_tests: [not_null]
+  - name: status_observed_request_count
+    data_tests: [not_null]
+  - name: status_unknown_request_count
+    data_tests: [not_null]
+  - name: status_null_request_count
+    data_tests: [not_null]
+  - name: status_blank_request_count
+    data_tests: [not_null]

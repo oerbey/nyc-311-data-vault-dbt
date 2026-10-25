@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time, request-trend and agency/cohort performance marts implemented; historical status and dashboard are pending.
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time, request-trend, agency/cohort performance and historical-status marts implemented; the dashboard is pending.
 **Updated:** 2026-10-25
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
@@ -358,7 +358,7 @@ models/temporal checks are complete for retained evidence; M5 marts are next.
 | `mart_request_trends` | source + mode + NYC event date + lifecycle-capture observed agency/problem/borough | Implemented: separate usable creation/closure contributions, explicit observed-context attribution and audit population/events |
 | `mart_agency_performance` | source + mode + lifecycle-capture observed agency + nullable NYC creation month | Implemented: retained population, usable closure-date coverage, duration coverage and eligible mean/median/p90; latest loaded lifecycle state per request |
 | `mart_resolution_times` | source-scoped request_hk, latest loaded lifecycle capture | Implemented: raw/typed dates, valid durations, quality/provenance, NYC event dates and population/eligibility counters |
-| `mart_historical_status` | snapshot as-of date + agency + status | Observed open/in-progress/closed counts; only **from first snapshot forward** |
+| `mart_historical_status` | bounded UTC as-of instant + source/mode + observed agency + exact status/observation flag | Last-observed status counts; explicit unknown population before first evidence |
 
 Do **not** use `due_date` as closure-SLA; the dictionary states it is when the responding agency is expected to update the request. Distinguish "new requests created in month" from "requests closed in month"; one request can contribute to both on different dates.
 
@@ -457,3 +457,21 @@ Use a default **offline synthetic demo**, no Socrata token needed. Real API inte
 - Snapshot retention policy, reproducibility strategy, and source revisions during page-by-page extraction.
 
 **Change control:** record changes to Hub/Link grains, historical semantics, status taxonomy, or business metrics as architecture decision notes; update `AGENTS.md` and docs when verified behavior changes.
+
+
+### Implemented fourth M5 slice (2026-10-25)
+
+`int_request_historical_status_population` retains one request per bounded PIT
+instant, with exact status and independently selected last agency activation.
+`mart_historical_status` groups by instant, source/mode, agency and exact nullable
+status/observation flag. Unknown, observed NULL, blank and unmapped status remain
+visible. Only exact Open/In Progress/Closed map to named status classes. Missing
+assignments never deactivate known agency; a captured replacement/return changes
+as-of attribution independently of status. Both original version lineages survive.
+Preflight verifies PIT calendar/population, canonical parents/effectivity boundaries
+and population projection before replacing reporting views. Twenty-five offline
+cases and 296 copied-project dbt tests passed; previous data/replay stayed stable.
+The retained sample has 20 groups, four instants and 518 identities per instant.
+This is current-evidence observed-time reconstruction, not complete event history
+or a historical known-population ledger. M5 remains in progress; Streamlit is next.
+See [reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status).

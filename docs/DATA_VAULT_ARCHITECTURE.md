@@ -765,3 +765,27 @@ bounds, not a shared extract time. Preflight verifies complete population/contex
 measure/lineage consistency and preserves all existing Raw Vault safeguards.
 See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for count partitions, quantile
 interpolation, attribution, scope and pooling rules. M5 remains in progress.
+
+
+## Implemented historical-status reporting (2026-10-25)
+
+The bounded status PIT feeds `marts.int_request_historical_status_population`.
+True agency effectivity events form half-open activation intervals using the next
+activation for that request; guards require the matching old-Link deactivation at
+every replacement, no duplicate/concurrent activations and canonical Hub/Link/event
+hashes and parent namespaces. No historical Link fan-out or latest agency label is
+joined. Unknown agency before first eligible activation remains NULL. Missing
+agency never deactivates a known relationship. Status and agency retain independent
+capture/batch/hash/load lineage. Only loaded evidence supplies the projection.
+
+`marts.mart_historical_status` aggregates by UTC instant, source/mode, agency HK/BK,
+status-observed flag and exact nullable status. Exact Open/In Progress/Closed have
+named classes; unobserved, observed_null, observed_blank and other remain separate.
+All retained identities enter every PIT instant, even before their first capture.
+PIT calendar/grid limits remain enforced; mismatched saved/configured PIT contents
+fail publication. Agency-only captures need an explicitly selected calendar instant
+if absent from the status-change default. Rebuild + dependencies to change calendar.
+Original Raw/BV/mart history remains unchanged; current-evidence views can restate
+answers after safe additive Raw loads. No warehouse-knowledge, source freshness,
+complete citywide backlog or intraday source-change claim is introduced. M5 remains
+in progress; see [reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status).
