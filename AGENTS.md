@@ -108,7 +108,7 @@ time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
 and preflight status/Hub integrity; no new refresh clock.
-M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; dashboard is pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend, agency/cohort performance and historical-status marts and the Streamlit dashboard are implemented; rendered browser review is pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
 
 
 M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
@@ -189,4 +189,19 @@ captures do not extend the default status-change calendar; rebuild + dependencie
 with explicit instants when needed. Do not sum counts across instants as unique
 requests or call the eventual retained population a historically known/citywide
 cohort. No new load clock or Raw changes. Follow docs/REPORTING_CONTRACTS.md.
-M5 remains in progress; the Streamlit dashboard is next.
+M5 remains in progress; the Streamlit dashboard is implemented below.
+
+
+The fifth M5 slice is dashboard/app.py with reusable dashboard/data.py. It reads
+only built reporting views, one source/mode at a time, defaulting to synthetic.
+Use a closed read-only transaction per rerun; never extract, build dbt or write the
+warehouse from a UI flow. Preserve exact nullable labels and independent event-date,
+cohort and observed-as-of filters. Recompute pooled quantiles from eligible request
+rows, never subgroup medians/p90s; retain exclusions, zeroes and unknown coverage.
+Export only scoped aggregate rows and reproducible query/filter/definition metadata,
+including pooled duration values and lineage. Paths resolve from the repo, not cwd;
+namespace values are bound parameters. Missing/busy/unbuilt data must produce
+honest errors, not a synthetic fallback. See docs/REPORTING_CONTRACTS.md.
+Automated tests pass; desktop/narrow-layout browser review remains outstanding
+because no browser/native backend was available. Keep that roadmap item unchecked.
+M6 CI/release tasks remain separately tracked; no publishing or scheduling is implied.

@@ -1,7 +1,7 @@
 # Reporting contracts
 
-Resolution-time, request-event trend and agency/cohort performance slices are implemented.
-Historical status and dashboard remain separate slices. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+All four reporting marts and the Streamlit dashboard are implemented.
+Automated checks pass; rendered browser review remains pending. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Build and reporting grain
 
@@ -560,3 +560,115 @@ sample has 20 groups at four instants over 518 identities (2,072 population rows
 527 observed and 1,545 unknown status rows across instants). These are sample
 observations, not permanent thresholds. Every previous base/BV/mart output and
 new-mart replay stayed unchanged. M5 remains in progress; Streamlit is next.
+
+
+## Streamlit dashboard
+
+Implemented on 2026-10-25 in `dashboard/app.py`, using the reporting contracts above.
+From the repository root with `.venv` activated:
+
+```bash
+python -m streamlit run dashboard/app.py \
+  --server.address 127.0.0.1 --browser.gatherUsageStats false
+python -m pytest -q tests/test_dashboard.py
+```
+
+The default database is repository `data/nyc_open_data.db`, independent of cwd.
+NYC311_DASHBOARD_DATABASE selects another existing, already-built file; relative
+paths resolve against the repository. Preserve the basename when copying an existing
+DuckDB file because stored views bind the catalog. The tested runtime uses Streamlit
+1.66, Altair 6.3 and pandas 2.3.3; direct requirements and the existing lockfile cover
+these dependencies. The command binds only loopback; no publication is performed.
+
+### Reader flow and filter scope
+
+One dataset selector chooses exactly one record_source/mode pair. Fictional
+synthetic fixtures are the default when present. Live evidence is explicitly a
+bounded sample. No implicit combined-source view is offered. Each view has its own
+controls; changing a view/source starts that view's available defaults. Refresh
+rereads built views and reset restores current-view defaults. Neither extracts
+records nor invokes dbt. No request-bearing filters are stored in URLs.
+
+| View | Local filters | Evidence and comparisons |
+|---|---|---|
+| Event trends | Exact lifecycle-capture agency/problem/borough; inclusive NYC event dates | Separate creation/closure totals, dated bars and selected-dimension comparison; context population/date exclusions remain visible |
+| Agency & duration | Exact lifecycle-capture agency; NYC creation months including unknown | Retained/eligible/excluded counts; pooled median; mean/median/p90 comparison; agency coverage/count table and duration-quality counts |
+| Observed status | UTC PIT instant; exact last-observed agency including unknown | Retained/observed/unknown counts and coverage; exact status composition by agency; observed/unknown coverage points at retained instants |
+
+Multiselect defaults include all exact values. Clearing a selection means **no
+rows**, never all rows. NULL is a separate option; non-NULL labels are JSON-quoted
+and escaped, preserving blank, whitespace, delimiters, Unicode and literal sentinel
+strings. Unknown cohort month is explicit. An incomplete date range asks for its
+second endpoint rather than broadening scope. Missing/unbuilt/locked databases
+show an actionable build/connection message; no source or synthetic fallback runs.
+Empty population, no usable dates, empty configured PIT and no eligible durations
+have distinct visible states. The application never silently truncates oversized
+query projections; the row cap is 1,000,000 per projection.
+
+### Metric and chart rules
+
+Event counts sum additive mart contributions within selected context/date scope.
+A request can appear once as creation and once as closure. Missing endpoints remain
+in the context-population caption **across all event dates** because they cannot be
+assigned to a selected date range. Date gaps are not filled with zeroes. Bars show
+only retained event-date groups; this is not inflow/backlog or citywide coverage.
+
+Duration summaries use request-grain resolution data with its matching verified
+lifecycle context. Eligible rows supply hours; zero is retained. Mean, median and
+linear p90 are recomputed over the pooled selected request population, never by
+averaging subgroup statistics. Unknown/ineligible requests stay in retained and
+excluded counts. No eligible rows gives unavailable statistics, not zero. Agency
+comparison order is nominal, not a causal ranking. Closure-date share and duration
+coverage both use retained count, with independent usable-closure/eligible-pair
+numerators. A negative pair can have a usable closure date. Source durations do
+not measure first response, SLA attainment or the sum of reopening cycles.
+
+Status composition and headline counts use **one selected instant**. Coverage is
+observed status / retained identities at that instant; an empty denominator is
+unavailable. NULL/blank observed status belongs to observed coverage, not unknown.
+The population includes eventual retained identities before their first capture.
+Known assignment can coexist with unknown status and vice versa. Agency filters
+follow assignment at each instant, so their selected population can change. The
+coverage timeline uses actual UTC instants and isolated points, never interpolated
+lines or fabricated daily history. Do not sum its repeated identities across time.
+The default PIT calendar still excludes agency-only captures not in status versions.
+
+### Provenance, exports and read boundary
+
+`dashboard/data.py` contains four explicit parameterized projections: population,
+trends, agency and status. Population joins request-grain mart_resolution_times to
+int_request_trend_population; the other projections use the three aggregate marts.
+Each rerun reads all four within one DuckDB read-only transaction, sets UTC display,
+and closes the connection. Results/connections have no persistent dashboard cache.
+Namespace values are bound parameters. No live API, Raw Vault write, hash, warehouse
+load timestamp or inferred freshness clock is added.
+
+Data and definitions expands the exact filtered aggregate rows, their definitions,
+source/mode, SQL and parameter values. JSON downloads carry those same scoped rows,
+filters and definitions with explicit SQL provenance. Duration exports additionally
+include pooled agency chart/table values, the request-population query and the
+calculation method. No individual request identifiers/rows, source descriptions,
+street addresses or precise coordinates are displayed/exported. JSON preserves
+NULL and exact labels; dates serialize as ISO and capture timestamps retain
+microsecond precision. Reproduce by rerunning the recorded query with its namespace, applying its recorded view-local filters, and
+using the documented pooling method for duration statistics.
+
+### Verification and remaining review
+
+Twenty-six network-free checks run against a temporary synthetic warehouse and
+Streamlit AppTest. They verify exact source projections, UTC timestamps, namespace
+isolation, bound SQL values, exact NULL/blank/Unicode filters, event range/exclusions,
+pooled [0,1,3,9] statistics (mean 3.25, median 2, p90 7.2), unknown cohorts, status
+reversals/agency attribution, per-instant denominators, empty/error states, controls,
+refresh/reset and scoped exports including pooled duration lineage. Database file
+hash checks and subsequent write-open checks verify that dashboard reads leave no
+persistent writer/connection. Network connections are blocked during view reruns.
+
+The copied project database passes all 296 dbt checks. AppTest and independent
+queries reconcile synthetic (3 retained, 1 eligible) and live (515 retained, 497
+eligible) populations and latest status coverage; every prior base/BV/mart output
+remains unchanged. Chart specs retain the intended point-only coverage timeline.
+A loopback preview starts successfully. Actual browser/native tools reported no
+available backend, so rendered desktop/narrow readability, hover and keyboard
+review were **not performed**. Keep that M5 checklist item open. Automated app/spec
+checks do not substitute for a visual review. M6 offline CI/release work is separate.

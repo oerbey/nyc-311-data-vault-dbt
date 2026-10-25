@@ -1,6 +1,6 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time, request-trend, agency/cohort performance and historical-status marts implemented; the dashboard is pending.
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time, request-trend, agency/cohort performance and historical-status marts implemented; the Streamlit dashboard is implemented and tested; rendered browser review is pending.
 **Updated:** 2026-10-25
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
@@ -475,3 +475,22 @@ The retained sample has 20 groups, four instants and 518 identities per instant.
 This is current-evidence observed-time reconstruction, not complete event history
 or a historical known-population ledger. M5 remains in progress; Streamlit is next.
 See [reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status).
+
+
+### Implemented fifth M5 slice (2026-10-25)
+
+`dashboard/app.py` is a local Streamlit interface over the existing marts. Dataset
+selection requires one source/mode and defaults to fictional synthetic fixtures.
+Event-date trends, agency/cohort durations and observed status have separate filter
+scopes and visible denominators. Eligible mean/median/p90 pool request rows rather
+than subgroup statistics. Status counts use one selected UTC PIT instant; the
+coverage timeline uses points only at retained instants. Exact nullable labels,
+unknown evidence and duration exclusions remain visible. Scoped aggregate JSON
+exports include query/filter/definition provenance and pooled duration values.
+`dashboard/data.py` resolves paths from the repository, parameterizes source/mode,
+projects only reporting fields and uses short read-only transactions without caches.
+No extraction, dbt execution or warehouse write is performed by the dashboard.
+Twenty-six offline checks and copied-database reconciliation passed alongside all
+296 dbt tests. Actual browser/native access was unavailable, so rendered visual
+review remains pending and M5 is not marked fully complete. See the
+[dashboard contract](REPORTING_CONTRACTS.md#streamlit-dashboard).
