@@ -295,3 +295,20 @@ business member is created. BIGINT request/observed/unknown/NULL/blank counts an
 min/max selected status/agency captures expose coverage and lineage. These captures
 are not a shared source snapshot or freshness clock. See
 [reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status).
+
+
+## Dashboard presentation mapping
+
+Event count fields become separate Created/Closed series by NYC event date.
+Agency/problem/borough filters preserve the exact lifecycle-capture strings; NULL
+is labelled Unknown (NULL), while non-NULL strings use JSON quoting/escaping so
+literal sentinel text, empty strings and whitespace remain distinct. No business
+key is normalized. Cohort NULL becomes Unknown month without inventing a date.
+Duration summaries reuse request counters and eligible resolution_hours, including
+zero; pandas linear p90 matches DuckDB quantile_cont. Unusable dates and duration
+exclusions retain their population counts. Observed status keeps separate Unobserved,
+Observed NULL and quoted source labels; its agency is observed_asof, independently
+of lifecycle context. UTC PIT instants are not converted into NYC event dates.
+Exports contain scoped aggregate data and metadata, including pooled duration
+statistics and their population-query lineage; no individual request rows are exposed.
+See [dashboard contract](REPORTING_CONTRACTS.md#streamlit-dashboard).

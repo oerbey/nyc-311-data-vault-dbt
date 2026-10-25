@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; dashboard remains pending. Foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; rendered browser review remains pending. Foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -245,12 +245,13 @@ this slice. No new extraction was performed. M1/M6 tasks remain separately track
 - [x] mart_agency_performance with explicit closure-date/duration coverage and eligible mean/median/p90.
 - [x] mart_resolution_times with request-grain latest lifecycle dates, valid durations and exclusions.
 - [x] mart_historical_status with exact status groups, unknown coverage and observed-as-of agency.
-- [ ] Streamlit dashboard for volumes, response performance and *observed* backlog.
+- [x] Streamlit dashboard for event volumes, reported closure durations and observed status/coverage.
+- [ ] Complete rendered desktop/narrow-layout review; browser/native backend unavailable during implementation.
 - [x] Document resolution-time mart grain, denominators, event-date eligibility and population coverage.
 - [x] Document request-trend event/population grains, context attribution, exclusions and coverage.
 - [x] Document agency/cohort attribution, unknown cohorts, count partitions, coverage fractions and quantile rules.
 - [x] Document historical-status grain, calendar, status mapping, unknown population and agency attribution.
-- [ ] Extend reporting contracts to dashboard filters, visuals and reconciliation.
+- [x] Extend reporting contracts to dashboard filters, visuals, exports and reconciliation.
 **Acceptance:** plots reproduce tested synthetic aggregates and never imply filtered data are whole-city totals.
 
 First M5 slice verified on 2026-10-24: `marts.mart_resolution_times` preserves
@@ -296,6 +297,20 @@ Counts describe eventual retained identities, not a historical known/citywide co
 [Reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status) define the
 status mapping, lineage, denominators and scope. M5 remains in progress; Streamlit
 is next.
+
+Fifth M5 slice implemented on 2026-10-25: the local read-only Streamlit dashboard
+uses existing reporting views and independent event/cohort/as-of scopes. It defaults
+to fictional synthetic fixtures and never combines namespaces implicitly. Pooled
+quantiles use eligible request rows; duration exclusions and unknown status stay
+visible. Twenty-six offline checks cover calculations, Streamlit controls, scoped
+exports, NULL/blank/Unicode keys, empty/error states, refresh/reset and read-only
+network-free operation. Copied full builds pass all 296 dbt tests and reconcile
+both namespaces (3 synthetic / 515 live requests; 1 / 497 eligible durations).
+All prior database outputs remain unchanged. Browser/native tools were unavailable,
+so actual desktop/narrow-layout visual review is still unchecked; automated app
+execution and chart-spec checks do not establish rendered readability. M5 remains
+open for that check. M6 offline CI/release tasks remain separately tracked.
+See [dashboard contract](REPORTING_CONTRACTS.md#streamlit-dashboard).
 
 ## M6 — Public portfolio quality
 - [ ] CI pipeline runs lint/pytest/dbt build in offline demo mode.

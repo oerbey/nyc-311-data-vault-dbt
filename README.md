@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; the dashboard remains pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; the Streamlit dashboard is implemented and tested; rendered browser review remains pending.**
 
 ## Project documentation
 
@@ -27,6 +27,39 @@ Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions
 
 
 
+## Streamlit dashboard
+
+With `.venv` activated, from the repository root:
+
+```bash
+python -m streamlit run dashboard/app.py \
+  --server.address 127.0.0.1 --browser.gatherUsageStats false
+```
+
+Open the local URL printed by Streamlit. The dashboard defaults to fictional
+synthetic fixtures and requires one source/mode at a time. It offers event trends,
+agency/cohort durations and observed status, with separate date/cohort/as-of filters,
+coverage counts, exact NULL/blank labels and scoped JSON exports. Mean/median/p90
+are pooled from eligible request rows, including valid zeroes. Unknown status is
+never counted as open. These are retained samples, not citywide totals or SLA metrics.
+
+The dashboard opens `data/nyc_open_data.db` read-only and closes each connection.
+`Refresh data` rereads built views; ingestion and dbt run separately. To build
+missing reporting views, run from `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_request_trends \
+  +mart_agency_performance +mart_historical_status
+```
+
+Set `NYC311_DASHBOARD_DATABASE` to another already-built DuckDB file when needed;
+relative values resolve from the repository root. Preserve the filename when copying
+an existing database because DuckDB views bind its catalog name. No live API call or
+warehouse write is made by the dashboard. Close warehouse writers before opening it.
+See the [dashboard contract](docs/REPORTING_CONTRACTS.md#streamlit-dashboard) for
+filter scope, provenance, exclusions and verification. Automated UI/data checks
+passed; rendered browser review was unavailable in this implementation session.
+
 ## Historical observed status — fourth M5 slice
 
 From `nyc_311_requests`:
@@ -50,7 +83,7 @@ citywide backlog. Agency-only captures do not add default calendar instants; use
 `pit_status_as_of_instants` and rebuild `+` dependencies for another bounded calendar.
 See [reporting contracts](docs/REPORTING_CONTRACTS.md#historical-observed-status)
 for denominators, query examples and coverage limits. M5 remains in progress;
-the Streamlit dashboard is next.
+the dashboard and remaining visual review are described above.
 
 ## Agency/cohort performance — third M5 slice
 
@@ -71,7 +104,7 @@ Current retained sample: four groups, 518 requests, 498 usable closure dates and
 498 eligible durations. Closure-date coverage and valid-duration coverage have
 separate numerators and an explicit retained-request denominator. See the
 [reporting contract](docs/REPORTING_CONTRACTS.md) for definitions, interpolation,
-exclusions and comparison limits. M5 remains in progress; the Streamlit dashboard is next.
+exclusions and comparison limits. M5 remains in progress; the dashboard and remaining visual review are described above.
 
 ## Request-event trends — second M5 slice
 

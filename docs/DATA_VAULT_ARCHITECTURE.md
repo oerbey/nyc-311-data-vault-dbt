@@ -789,3 +789,26 @@ Original Raw/BV/mart history remains unchanged; current-evidence views can resta
 answers after safe additive Raw loads. No warehouse-knowledge, source freshness,
 complete citywide backlog or intraday source-change claim is introduced. M5 remains
 in progress; see [reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status).
+
+
+## Streamlit reporting boundary (2026-10-25)
+
+The local dashboard reads `mart_request_trends`, `mart_agency_performance`,
+`mart_historical_status` and request-grain `mart_resolution_times` joined to the
+verified trend population for lifecycle-capture context. It selects only reporting
+fields; no addresses, coordinates, descriptions or individual IDs are displayed or
+exported. A single read-only transaction supplies all four projections per rerun,
+then closes; results and connections are not cached across reruns. Namespace values
+are bound parameters; database paths are repository-relative or explicitly configured.
+Missing/unbuilt/busy databases produce actionable errors, with no fixture fallback,
+automatic ingestion or dbt build. Oversized projections fail rather than truncate.
+
+Global selection is one source/mode. Event context + NYC event range, lifecycle
+agency + NYC creation month, and observed agency + UTC PIT instant remain separate
+view scopes. Duration statistics pool eligible request rows, not medians/quantiles
+from cohort groups. Unknown, NULL/blank and ineligible populations remain visible.
+JSON exports retain exactly scoped aggregate rows plus SQL, bound namespace,
+filters/definitions and pooled duration values/calculation lineage. No warehouse
+models/hashes/timestamps are changed. Automated app/data tests passed; browser
+rendering could not be inspected in this session. See
+[reporting contracts](REPORTING_CONTRACTS.md#streamlit-dashboard).
