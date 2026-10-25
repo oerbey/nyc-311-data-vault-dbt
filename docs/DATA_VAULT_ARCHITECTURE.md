@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Required M3 and M4 models/temporal checks implemented; M5 resolution-time and request-trend marts implemented; remaining reporting models/dashboard are proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Required M3 and M4 models/temporal checks implemented; M5 resolution-time, request-trend and agency/cohort performance marts implemented; historical status/dashboard remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -749,3 +749,19 @@ ordering, stored-data or hash changes. Two deterministic regression tests seed a
 absent cached agency/problem relation. The original guard fails the negative
 control; both cases pass with catalog visibility checks. Copied-database builds
 still pass all 256 dbt data tests and preserve all prior base/BV/resolution outputs.
+
+## Implemented agency/cohort performance (2026-10-25)
+
+`marts.mart_agency_performance` aggregates `int_request_trend_population` at source,
+mode, exact nullable observed agency and nullable NYC creation-cohort month grain.
+Each retained request enters one group. Context is lifecycle_capture; it is not
+current/event-time agency responsibility. Unknown cohorts/labels remain explicit.
+Usable reported closure-date coverage and valid-duration coverage share a retained
+request denominator but have independent numerators. Closure-date coverage does not
+classify status. Only valid nonnegative UTC durations enter total/mean/median/p90;
+empty eligible groups have NULL statistics, and valid zeroes remain eligible.
+Captures can differ across members; min/max selected-version times are lineage
+bounds, not a shared extract time. Preflight verifies complete population/context/
+measure/lineage consistency and preserves all existing Raw Vault safeguards.
+See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for count partitions, quantile
+interpolation, attribution, scope and pooling rules. M5 remains in progress.

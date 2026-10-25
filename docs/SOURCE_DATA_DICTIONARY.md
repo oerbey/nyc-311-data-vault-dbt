@@ -260,3 +260,18 @@ date and observed context into separate BIGINT counts, labelled lifecycle_captur
 No report clock, hash or source date interpretation is added. The population keeps
 excluded endpoints; closure-date eligibility remains independent of duration order.
 See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for attribution and scope limits.
+
+## Implemented agency/cohort performance mapping
+
+`int_request_trend_population` supplies one retained request, observed_agency_bk,
+created_cohort_month_nyc, original lifecycle provenance and valid duration measures.
+Agency performance groups by source/mode and exact nullable agency/month, labelled
+lifecycle_capture. No new source extraction, business key, normalization, assignment
+inference or load timestamp is added. Unusable creation remains an unknown cohort.
+Usable closure, missing/unusable closure and unobserved lifecycle counts partition
+retained requests. Closure-date coverage uses usable closure dates / retained count;
+valid-duration coverage uses eligible pairs / retained count. These are not Closed
+status or closure-event-period rates. Eligible nullable resolution_hours supply
+sum, mean, continuous median/p90; no eligible values yield NULL statistics. Min/max
+selected lifecycle captures expose the evidence range, not a uniform snapshot.
+See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for grain and denominator rules.

@@ -1,7 +1,7 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
-**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time and request-trend marts implemented; remaining marts and dashboard are pending.
-**Updated:** 2026-10-24
+**Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time, request-trend and agency/cohort performance marts implemented; historical status and dashboard are pending.
+**Updated:** 2026-10-25
 
 **Owner:** Portfolio repository `oerbey/nyc-311-data-vault-dbt`  
 **Read first:** [../AGENTS.md](../AGENTS.md) · [DATA_VAULT_ARCHITECTURE.md](DATA_VAULT_ARCHITECTURE.md) · [SOURCE_DATA_DICTIONARY.md](SOURCE_DATA_DICTIONARY.md) · [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)
@@ -356,7 +356,7 @@ models/temporal checks are complete for retained evidence; M5 marts are next.
 | Mart | Grain | Main metrics |
 |---|---|---|
 | `mart_request_trends` | source + mode + NYC event date + lifecycle-capture observed agency/problem/borough | Implemented: separate usable creation/closure contributions, explicit observed-context attribution and audit population/events |
-| `mart_agency_performance` | agency + cohort/month | Volume, closed share at defined extract/as-of, median/p90 closure time |
+| `mart_agency_performance` | source + mode + lifecycle-capture observed agency + nullable NYC creation month | Implemented: retained population, usable closure-date coverage, duration coverage and eligible mean/median/p90; latest loaded lifecycle state per request |
 | `mart_resolution_times` | source-scoped request_hk, latest loaded lifecycle capture | Implemented: raw/typed dates, valid durations, quality/provenance, NYC event dates and population/eligibility counters |
 | `mart_historical_status` | snapshot as-of date + agency + status | Observed open/in-progress/closed counts; only **from first snapshot forward** |
 
@@ -386,6 +386,20 @@ copied builds passed 256 dbt tests, independently matching 267 groups with 518
 creation and 498 closure contributions. Prior base/BV/resolution-mart data and
 replay remained unchanged. See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md).
 M5 remains in progress; agency performance is next.
+
+### Implemented third M5 slice (2026-10-25)
+
+`mart_agency_performance` groups one retained request per source/mode, exact observed
+agency and NYC creation month, retaining unknown cohorts/labels. Attribution remains
+lifecycle_capture, not event-time/current responsibility. Usable closure-date share
+and duration coverage use retained requests as denominator; eligible duration counts
+explain total/mean/median/p90. Invalid/unknown/reversed rows remain counted, and empty
+eligible groups yield NULL statistics. Selected-capture bounds disclose heterogeneous
+version evidence, not a shared extract/as-of. Twenty-two offline cases and Ruff
+passed; copied builds passed 275 dbt tests and independently matched four groups /
+518 requests / 498 eligible durations. All prior data/reports and replay provenance
+remained unchanged. See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md).
+M5 remains in progress; historical status is next.
 
 ## 8. Data tests and tricky history scenarios
 
