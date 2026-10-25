@@ -108,7 +108,7 @@ time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
 and preflight status/Hub integrity; no new refresh clock.
-M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time and request-trend marts are implemented; remaining marts/dashboard are pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend and agency/cohort performance marts are implemented; historical status/dashboard are pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
 
 
 M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
@@ -150,7 +150,7 @@ nullable/blank grouping text and original version/load lineage. Usable closures
 remain eligible independently of creation/order. Never infer zero-coverage days,
 backlog or rates from source-event totals. Preflight rejects missing/inconsistent
 landing evidence and upstream mart drift; preserve all Raw safeguards. Follow
-docs/REPORTING_CONTRACTS.md. M5 remains in progress; agency performance is next.
+docs/REPORTING_CONTRACTS.md. M5 remains in progress; agency performance is implemented below.
 
 
 The shared effectivity history guard resolves existing Satellite visibility through
@@ -159,3 +159,19 @@ another thread's first CREATE commit; never treat that cache alone as proof a ta
 is readable. Retain the two-table history/retraction checks for all visible stored
 relations. Deterministic tests seed absent cached agency/problem relations; do not
 replace the history guard with retries, suppression or test-only serialization.
+
+
+The third M5 slice is marts.mart_agency_performance: source + mode + exact nullable
+lifecycle-capture observed agency + nullable NYC creation month. Preserve the full
+retained population, unknown cohorts/labels, original context and eligibility rules.
+reported_closure_date_share is usable closure dates / retained requests, not Closed
+status or a resolution/event-period rate. duration_coverage_share uses valid pairs /
+retained requests. Expose all denominators and closure/lifecycle count partitions;
+negative pairs can have usable closure dates but no valid duration. Eligible UTC
+hours alone supply sum/mean/continuous median/p90; zeroes are valid, no eligible
+rows means NULL statistics. Do not impute missing cohorts, average group shares/
+quantiles, or claim causal agency efficiency from mixed context/cohorts/case mix.
+Min/max selected capture bounds are not report/extract/refresh timestamps. Preflight
+checks complete unique population, context, counters, measures and lineage. Preserve
+Raw Vault safeguards and prior marts. Follow docs/REPORTING_CONTRACTS.md.
+M5 remains in progress; historical status is next.

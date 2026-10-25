@@ -1,0 +1,68 @@
+version: 2
+models:
+- name: mart_agency_performance
+  description: Agency/cohort reporting over retained requests using each request's
+    latest loaded lifecycle and its observed agency context. Grain is source + mode +
+    exact nullable agency + nullable NYC creation month. Captures may differ across
+    requests. Closure-date coverage is independent of status and duration validity;
+    this is not agency-at-event responsibility or a comparable causal performance ranking.
+  columns:
+  - name: record_source
+    data_tests: [not_null]
+  - name: mode
+    data_tests: [not_null]
+  - name: observed_agency_bk
+    description: Exact agency from selected lifecycle landing evidence; NULL/blank groups retained.
+  - name: created_cohort_month_nyc
+    description: NYC creation month; NULL is an explicit unknown cohort, never current/capture month.
+  - name: dimension_basis
+    data_tests:
+    - not_null
+    - accepted_values:
+        arguments:
+          values: [lifecycle_capture]
+  - name: retained_request_count
+    description: All retained identities in the group, including unusable/unknown lifecycle rows.
+    data_tests: [not_null]
+  - name: lifecycle_observed_request_count
+    data_tests: [not_null]
+  - name: unobserved_lifecycle_count
+    data_tests: [not_null]
+  - name: usable_creation_date_count
+    data_tests: [not_null]
+  - name: usable_closure_date_count
+    data_tests: [not_null]
+  - name: missing_closure_date_count
+    data_tests: [not_null]
+  - name: unusable_closure_date_count
+    data_tests: [not_null]
+  - name: duration_eligible_count
+    description: Exact denominator for total/mean/median/p90; zero duration is eligible.
+    data_tests: [not_null]
+  - name: duration_ineligible_count
+    data_tests: [not_null]
+  - name: closed_before_created_count
+    data_tests: [not_null]
+  - name: has_missing_agency
+    data_tests: [not_null]
+  - name: is_cohort_month_known
+    data_tests: [not_null]
+  - name: reported_closure_date_share
+    description: Usable reported closure dates / retained requests, including negative pairs;
+      not reported Closed status, a resolved fraction or a closure-event-period rate.
+    data_tests: [not_null]
+  - name: duration_coverage_share
+    description: Valid creation/closure pairs / retained requests.
+    data_tests: [not_null]
+  - name: total_resolution_hours
+    description: Sum of eligible elapsed durations; NULL with no eligible rows.
+  - name: mean_resolution_hours
+    description: Mean over eligible rows only; NULL with no eligible rows.
+  - name: median_resolution_hours
+    description: Continuous 50th percentile over eligible rows; valid zeroes retained.
+  - name: p90_resolution_hours
+    description: Continuous linearly interpolated 90th percentile over eligible rows.
+  - name: min_selected_lifecycle_capture_at_utc
+    description: Minimum selected version capture, not coverage start or report as-of.
+  - name: max_selected_lifecycle_capture_at_utc
+    description: Maximum selected version capture, not a shared extract time or source freshness guarantee.

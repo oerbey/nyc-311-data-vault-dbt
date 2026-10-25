@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time and request-trend marts are implemented; agency performance, historical status and dashboard remain pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend and agency/cohort performance marts are implemented; historical status and dashboard remain pending.**
 
 ## Project documentation
 
@@ -26,6 +26,27 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
 
 
+
+## Agency/cohort performance — third M5 slice
+
+From `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_agency_performance
+```
+
+`marts.mart_agency_performance` groups retained requests by source/mode, exact agency
+observed with the selected lifecycle version, and NYC creation-cohort month. It
+exposes retained/eligible/excluded counts, usable reported closure-date coverage,
+duration coverage, and eligible total/mean/median/p90 hours. Unknown cohorts and
+missing agency labels remain explicit. `dimension_basis='lifecycle_capture'` makes
+attribution clear; the report does not establish event-time agency responsibility.
+
+Current retained sample: four groups, 518 requests, 498 usable closure dates and
+498 eligible durations. Closure-date coverage and valid-duration coverage have
+separate numerators and an explicit retained-request denominator. See the
+[reporting contract](docs/REPORTING_CONTRACTS.md) for definitions, interpolation,
+exclusions and comparison limits. M5 remains in progress; historical status is next.
 
 ## Request-event trends — second M5 slice
 

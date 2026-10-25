@@ -1,7 +1,7 @@
 # Reporting contracts
 
-Resolution-time and request-event trend slices are implemented. Agency performance,
-historical status and dashboard remain separate slices. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+Resolution-time, request-event trend and agency/cohort performance slices are implemented.
+Historical status and dashboard remain separate slices. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Build and reporting grain
 
@@ -284,3 +284,142 @@ the original implementation fails the negative control and the fix passes both.
 Copied-database builds after the fix still pass all 256 dbt data tests with unchanged
 prior tables/reports and stable trend replay. This fixes build reliability without
 changing historical semantics, keys, load timestamps or reporting contracts.
+
+
+# Agency/cohort performance contract
+
+Third M5 slice, verified on 2026-10-25. From `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_agency_performance
+```
+
+## Grain, attribution and retained population
+
+`marts.mart_agency_performance` is a view at **record_source + mode + exact nullable
+observed_agency_bk + nullable created_cohort_month_nyc** grain. It groups one row per
+request from `int_request_trend_population`, independently of problem/borough or
+number of historical Links/versions. Source namespaces stay separate. NULL, empty,
+whitespace, case and Unicode agency labels remain distinct; `has_missing_agency`
+flags absence without changing grouping text. There are no fabricated agency members.
+
+`dimension_basis='lifecycle_capture'` retains the trends mart's explicit attribution:
+agency is the label in the successful landing row supporting the selected lifecycle
+version. It is not necessarily the latest agency, the agency responsible at creation/
+closure, or a causal explanation for the duration. Assignment-only changes leave
+this context fixed. A new lifecycle version can restate both agency and cohort.
+Every retained request belongs to one group; excluded durations are still counted.
+
+Creation cohorts use usable **NYC local creation month**, not closure, capture,
+warehouse-load or current month. Unknown/invalid/DST-uncertain creation has a NULL
+cohort with `is_cohort_month_known=false`; these rows remain in denominators. A Hub
+with no loaded lifecycle joins the unknown cohort/context group and is counted in
+`unobserved_lifecycle_count`. Captured missing dates differ from unloaded lifecycle.
+Per-request quality and original capture/hash/batch/load lineage remain inspectable
+in the existing population view. The aggregate creates no new clock or hashes.
+
+The underlying state is latest **loaded** lifecycle capture per request, not a
+uniform extract/as-of snapshot. `min_selected_lifecycle_capture_at_utc` and
+`max_selected_lifecycle_capture_at_utc` describe the range of those selected version
+captures. They are not report times, earliest-ever evidence, coverage boundaries,
+last successful refresh or proof of source freshness. Unchanged later captures do
+not create new lifecycle versions. Source/mode/sample limits from the preceding
+contracts apply; this is a descriptive report over retained development evidence.
+
+## Counts, partitions and rates
+
+| Field | Definition |
+|---|---|
+| `retained_request_count` | All retained request identities in the agency/cohort group |
+| `lifecycle_observed_request_count` | Requests with a selected loaded lifecycle version |
+| `unobserved_lifecycle_count` | Requests without loaded lifecycle |
+| `usable_creation_date_count` | Requests with usable creation date |
+| `usable_closure_date_count` | Requests with usable reported closure date, independently of creation/order/status |
+| `missing_closure_date_count` | Observed closure time status is missing, including blank source text |
+| `unusable_closure_date_count` | Observed closure has invalid format, ambiguous/fold or nonexistent/gap time |
+| `duration_eligible_count` | Usable, nonnegative creation/closure pairs, including valid zeroes |
+| `duration_ineligible_count` | All remaining requests |
+| `closed_before_created_count` | Observed reversed pairs, retained diagnostically |
+
+Partitions must reconcile:
+
+- observed lifecycle + unobserved lifecycle = retained requests;
+- usable closure + missing closure + unusable closure + unobserved lifecycle = retained requests;
+- duration eligible + duration ineligible = retained requests.
+
+`reported_closure_date_share = usable_closure_date_count / retained_request_count`.
+This is **coverage of usable reported closure dates**, not a reported Closed-status
+share, verified resolved fraction, SLA attainment or a ratio of closure-period
+counts to creation-period counts. A reversed pair contributes to closure-date
+coverage and the chronology flag, but not duration eligibility. Unknown creation
+can coexist with a usable closure, producing closure-date share 1 and duration
+coverage 0 in an unknown cohort. Missing closure is not evidence of Open status.
+
+`duration_coverage_share = duration_eligible_count / retained_request_count` makes
+selection into duration statistics visible. Both fractions lie in [0,1], with
+duration coverage <= closure-date coverage. Nonempty groups with no usable closure
+have closure-date share 0, while their duration statistics remain NULL. Empty
+populations produce no group; no synthetic zero-sized cohorts are generated.
+
+## Eligible duration statistics
+
+`total_resolution_hours`, `mean_resolution_hours`, `median_resolution_hours` and
+`p90_resolution_hours` use only nullable valid `resolution_hours` from M4. Zeroes
+are eligible; missing/invalid/DST-uncertain/reversed pairs are excluded. Signed
+negative diagnostics stay in the population. Due-date quality and reported status
+do not gate this source-date measure. Durations are elapsed UTC hours under the
+existing America/New_York interpretation, not naive local-time subtraction.
+
+Median and p90 use continuous linear interpolation: sort n eligible values and
+interpolate at position `(n-1)*p` between adjacent values, for p=0.5/0.9. A singleton
+has that value for both percentiles. With no eligible durations, **all four duration
+statistics, including total, are NULL**, rather than a zero-performance result.
+The denominator is exposed as duration_eligible_count. These measure reported
+creation-to-closure elapsed time, not response time, work effort or closure cycles.
+
+Example scoped cohort report:
+
+```sql
+select observed_agency_bk, created_cohort_month_nyc, retained_request_count,
+       usable_closure_date_count, reported_closure_date_share,
+       duration_eligible_count, duration_ineligible_count, duration_coverage_share,
+       mean_resolution_hours, median_resolution_hours, p90_resolution_hours
+from marts.mart_agency_performance
+where record_source = 'synthetic_311' and mode = 'synthetic'
+order by observed_agency_bk, created_cohort_month_nyc;
+```
+
+When pooling groups, recompute fractions from summed numerators/denominators and
+mean from summed total hours / summed eligible counts. Do not average group shares
+or medians/p90s. Recompute pooled quantiles from the request-level population.
+Agencies/cohorts can differ in captured context, case mix, age, source filtering and
+capture timing; comparisons do not establish causal agency efficiency rankings.
+
+## Verification and rollout
+
+Preflight reuses existing loaded lifecycle, BV/resolution and landing-evidence
+checks. It independently verifies complete unique population coverage, exact context,
+cohort, measures, counters and original lineage before aggregating. Duplicate/missing
+rows or altered population data fail before replacing the view. Existing Raw Vault
+hash, replay, full-refresh and late-history safeguards remain unchanged. Each dbt
+model commits independently. Builds check external/manual changes; views reflect
+accepted loaded evidence dynamically. Pending landing data and assignment-only
+changes do not override the selected lifecycle context. Safe earlier captures do
+not override newer ones; corrections/clearing can restate current aggregates.
+
+Twenty-two offline integration cases and Ruff passed. Independent Python grouping,
+math.fsum means/totals and interpolated quantiles check every count, fraction,
+statistic and selected-capture bound. Cases cover namespaces, exact/missing labels,
+unknown cohorts/lifecycle, zero/negative/invalid dates, due-only quality, NYC midnight,
+DST, case-mix aggregation, corrections/cohort movement, assignment-only stability,
+late evidence, replay/ties, dynamic views, input drift rejection and empty builds.
+The six-request fixture [0,1,3,9,NULL,negative] produces 5/6 closure-date coverage,
+4/6 duration coverage, 13 total eligible hours, mean 3.25, median 2 and p90 7.2.
+An ineligible-only group has NULL statistics; a zero-only group has eligible zeroes.
+
+Copied-database builds passed 121 selected / 275 project dbt tests. Independent
+reconstruction matched four agency/cohort groups covering 518 retained requests,
+498 usable closure dates and 498 eligible durations. All prior base tables and
+Business Vault/mart outputs stayed unchanged, with stable new-mart replay/full-build
+results. Counts describe this retained sample, not permanent thresholds. M5 remains
+in progress; historical status is the next slice, followed by the dashboard.
