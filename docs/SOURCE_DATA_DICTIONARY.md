@@ -275,3 +275,23 @@ status or closure-event-period rates. Eligible nullable resolution_hours supply
 sum, mean, continuous median/p90; no eligible values yield NULL statistics. Min/max
 selected lifecycle captures expose the evidence range, not a uniform snapshot.
 See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for grain and denominator rules.
+
+
+## Implemented historical-status mapping
+
+PIT request_hk + as_of_utc carries exact nullable status, is_status_observed and
+original status capture/hash/batch/load pointers unchanged into the historical
+population. As-of agency_hk/agency_bk come from the agency Link selected through
+loaded active effectivity at that instant, not lifecycle context or agency_name.
+Agency capture/hash/batch/load pointers are independently exposed. Unknown agency
+has NULL pointers and is_agency_observed=false. Missing input keys do not clear
+last-known agency. No new source dates, hashes or load timestamps are introduced.
+
+`dimension_basis=observed_asof`; exact Open/In Progress/Closed map to open/
+in_progress/closed classes. Unobserved, observed NULL, ASCII whitespace-only and
+other exact values remain unobserved/observed_null/observed_blank/other. Grouping
+retains raw status and the observation flag; neither normalization nor an unknown
+business member is created. BIGINT request/observed/unknown/NULL/blank counts and
+min/max selected status/agency captures expose coverage and lineage. These captures
+are not a shared source snapshot or freshness clock. See
+[reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status).

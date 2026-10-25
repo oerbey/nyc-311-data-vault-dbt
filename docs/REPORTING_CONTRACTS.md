@@ -423,3 +423,140 @@ reconstruction matched four agency/cohort groups covering 518 retained requests,
 Business Vault/mart outputs stayed unchanged, with stable new-mart replay/full-build
 results. Counts describe this retained sample, not permanent thresholds. M5 remains
 in progress; historical status is the next slice, followed by the dashboard.
+
+
+## Historical observed status
+
+Fourth M5 slice, verified on 2026-10-25. From `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_historical_status
+# Example explicitly bounded calendar (UTC; equivalent offset instants deduplicate):
+dbt build --profiles-dir . --select +mart_historical_status \
+  --vars '{pit_status_as_of_instants: ["2026-02-01T08:00:00Z", "2026-02-02T08:00:00Z", "2026-02-03T08:00:00Z"]}'
+```
+
+### Grain and population
+
+`int_request_historical_status_population` is a view at request_hk + as_of_utc.
+It includes every retained source-scoped Hub identity at every PIT instant, including
+identities first observed later and Hub-only identities. This eventual retained
+population is not the number of requests known to the pipeline or created at an
+earlier instant. Unknown coverage must stay visible in historical reporting.
+
+`mart_historical_status` is a view at UTC as_of_utc + record_source + mode +
+is_agency_observed + agency_hk/agency_bk + is_status_observed + exact nullable status.
+Derived status_class and dimension_basis=observed_asof are consistent with this
+grain. One identity enters one group per instant. Unknown agency is a NULL group
+with false observation flag, not a fabricated Hub member. Exact case, whitespace,
+Unicode and source namespace survive; do not merge source/mode populations implicitly.
+
+### Independent clocks and agency attribution
+
+Status is the last loaded captured status version <= as_of_utc, using half-open
+intervals. Before first status capture it is unknown. Captured NULL status remains
+observed and is not carried over from an older non-NULL value. A loaded Open → Closed
+→ Open reversal is retained. Source created/closed dates never backdate status.
+
+Agency is the last loaded eligible agency activation <= as_of_utc, also half-open.
+An explicit replacement ends the previous agency at the replacement capture; a
+return restores the original identity. Missing/blank agency, missing categories,
+failed/partial captures and disappearance never end the last known assignment.
+Agency is unknown before its first activation. Agency and status captures can differ,
+including known agency with unknown status and observed status with unknown agency.
+Agency attribution differs intentionally from the earlier marts' lifecycle_capture
+context. It is last *observed* assignment, not responsibility at a source event date.
+
+The population preserves all PIT status pointers and adds request_bk, agency_link_hk,
+agency_hk/BK, is_agency_observed, agency_observed_from, agency_batch_id,
+agency_effectivity_hashdiff and agency_load_dts_utc. The latter is the activation
+row's original warehouse load time. No new warehouse/report clock is added.
+Report min/max selected capture fields describe member evidence, not simultaneous
+extraction, complete coverage or continuous source freshness.
+
+### Exact status mapping
+
+| Condition | status_class |
+|---|---|
+| No captured status version | unobserved |
+| Captured NULL | observed_null |
+| Captured empty or ASCII space/tab/newline/carriage-return/vertical-tab/form-feed only | observed_blank |
+| Exact `Open` | open |
+| Exact `In Progress` | in_progress |
+| Exact `Closed` | closed |
+| Every other captured value, including case/padded variants | other |
+
+Raw status is always part of the grain, even within blank/other categories. This
+small reporting map is not an exhaustive NYC taxonomy. Never classify every
+non-Closed value as open, infer Closed from a closure date, or add missing categories
+as zero-valued groups. Observed named statuses are not continuous source-state or
+universal backlog/SLA claims.
+
+### Counters and denominators
+
+- request_count counts all retained identities in the group.
+- status_observed_request_count + status_unknown_request_count = request_count.
+- status_null_request_count and status_blank_request_count are disjoint subsets of
+  observed status, not unknown status.
+- A named class count is SUM(request_count) filtered to that class **at one instant**.
+- Status coverage uses SUM(status_observed_request_count) / SUM(request_count),
+  within one instant and explicit source/mode/agency scope. Include the unknown
+  group when reporting total retained scope. No denominator means NULL, not zero.
+- Open share among observed rows must state its observed denominator; excluding
+  NULL/blank/other rows changes the denominator and requires an explicit label.
+- Counts across different instants repeat identities. Never sum them as unique
+  requests, events, inflow/outflow or elapsed-time workload. Do not average group
+  shares; pool compatible numerators/denominators within the same instant.
+
+### Calendar and coverage
+
+The shared PIT defaults to distinct **loaded status-version capture instants**,
+not every unchanged landing capture, agency change, daily boundary or current time.
+Agency-only changes are reflected when evaluating a selected later instant but do
+not themselves create a default instant. Use explicit timezone-aware
+pit_status_as_of_instants and rebuild + dependencies for desired instants. Empty
+calendar yields no rows; equivalent instants deduplicate. The shared 366-instant /
+1,000,000-grid limits apply at build and PIT query time. A saved PIT not matching the
+requested calendar/population fails downstream publication; view-only builds do
+not silently reconfigure its calendar.
+
+These are current-evidence observed-time answers. Safe additive late Raw versions
+can revise answers; landing-only changes cannot. This is not warehouse-knowledge
+as-of, a log of every source transition, proof of continuing status, or retrospective
+citywide history. Existing filtered sample and off-cohort reassignment limits apply.
+
+### Reconciliation and inspection
+
+```sql
+-- Keep one row per instant and source namespace; never add across these dates.
+SELECT as_of_utc, record_source, mode,
+       sum(request_count) AS retained_requests,
+       sum(status_observed_request_count) AS observed_status,
+       sum(status_unknown_request_count) AS unknown_status,
+       sum(status_observed_request_count)::DOUBLE / nullif(sum(request_count),0)
+           AS status_coverage_share
+FROM marts.mart_historical_status
+WHERE record_source='synthetic_311' AND mode='synthetic'
+GROUP BY ALL ORDER BY as_of_utc;
+
+-- Inspect independent status/assignment lineages for the reassigned fixture.
+SELECT as_of_utc, status, is_status_observed, status_snapshot_at_utc,
+       agency_bk, is_agency_observed, agency_observed_from, agency_batch_id
+FROM marts.int_request_historical_status_population
+WHERE record_source='synthetic_311' AND mode='synthetic' AND request_bk='DEMO-002'
+ORDER BY as_of_utc;
+```
+
+### Verification
+
+Twenty-five network-free integration cases independently reconstruct latest status,
+active Links and every original pointer from Raw Vault, then reproduce grouped
+counts/capture bounds. They cover boundary microseconds, DST, unknown/NULL/blank/
+other, source namespaces, agency-only reassignments/returns, missing assignments,
+Hub-only identities, empty/default/explicit calendars, accepted late evidence,
+replay, canonical/parent/event corruption, population drift and blocked Raw full
+refresh. Copied builds passed 135 selected / 296 full-project dbt tests. The current
+sample has 20 groups at four instants over 518 identities (2,072 population rows;
+527 observed and 1,545 unknown status rows across instants). These are sample
+observations, not permanent thresholds. Every previous base/BV/mart output and
+new-mart replay stayed unchanged. M5 remains in progress; Streamlit is next.

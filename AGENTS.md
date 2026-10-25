@@ -108,7 +108,7 @@ time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
 and preflight status/Hub integrity; no new refresh clock.
-M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend and agency/cohort performance marts are implemented; historical status/dashboard are pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; dashboard is pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
 
 
 M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
@@ -174,4 +174,19 @@ quantiles, or claim causal agency efficiency from mixed context/cohorts/case mix
 Min/max selected capture bounds are not report/extract/refresh timestamps. Preflight
 checks complete unique population, context, counters, measures and lineage. Preserve
 Raw Vault safeguards and prior marts. Follow docs/REPORTING_CONTRACTS.md.
-M5 remains in progress; historical status is next.
+M5 remains in progress; historical status is implemented below.
+
+
+The fourth M5 slice is marts.mart_historical_status and its request/as-of population.
+Use the bounded status PIT; retain every eventual Hub identity at every instant.
+Unknown before first status differs from observed NULL/blank. Select agency through
+loaded agency effectivity at as-of capture time, independently of status/lifecycle;
+missing agency never ends a known relationship. Preserve both version lineages.
+Only exact Open/In Progress/Closed have named status classes; all other labels stay
+visible. Retain canonical parent/hash/boundary guards and PIT grid/calendar limits;
+reject a saved PIT differing from configured calendar before publishing. Agency-only
+captures do not extend the default status-change calendar; rebuild + dependencies
+with explicit instants when needed. Do not sum counts across instants as unique
+requests or call the eventual retained population a historically known/citywide
+cohort. No new load clock or Raw changes. Follow docs/REPORTING_CONTRACTS.md.
+M5 remains in progress; the Streamlit dashboard is next.

@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend and agency/cohort performance marts verified; historical status/dashboard remain pending. Foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; dashboard remains pending. Foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -244,12 +244,13 @@ this slice. No new extraction was performed. M1/M6 tasks remain separately track
 - [x] mart_request_trends with separate created/closed event counts and explicit lifecycle-capture context.
 - [x] mart_agency_performance with explicit closure-date/duration coverage and eligible mean/median/p90.
 - [x] mart_resolution_times with request-grain latest lifecycle dates, valid durations and exclusions.
-- [ ] mart_historical_status.
+- [x] mart_historical_status with exact status groups, unknown coverage and observed-as-of agency.
 - [ ] Streamlit dashboard for volumes, response performance and *observed* backlog.
 - [x] Document resolution-time mart grain, denominators, event-date eligibility and population coverage.
 - [x] Document request-trend event/population grains, context attribution, exclusions and coverage.
 - [x] Document agency/cohort attribution, unknown cohorts, count partitions, coverage fractions and quantile rules.
-- [ ] Extend denominator/grain/population contracts to historical status and dashboard.
+- [x] Document historical-status grain, calendar, status mapping, unknown population and agency attribution.
+- [ ] Extend reporting contracts to dashboard filters, visuals and reconciliation.
 **Acceptance:** plots reproduce tested synthetic aggregates and never imply filtered data are whole-city totals.
 
 First M5 slice verified on 2026-10-24: `marts.mart_resolution_times` preserves
@@ -282,6 +283,19 @@ Prior base/BV/mart data and new-mart replay remained unchanged. Attribution is n
 current/event-time responsibility; coverage is not Closed status or an event-period
 resolution rate. M5 remains in progress; historical status is next. See
 [reporting contracts](REPORTING_CONTRACTS.md).
+
+Fourth M5 slice verified on 2026-10-25: historical status counts use the bounded
+PIT and independent last-observed agency effectivity. Exact nullable status and
+source-scoped agency groups retain unknown evidence explicitly. Twenty-five offline
+integration cases and Ruff passed. Copied dependency/replay/full builds passed
+135 selected / 296 project dbt data tests; independent Python reconstruction matched
+20 groups over 518 identities × four instants (527 observed / 1,545 unknown status
+rows). All prior base/BV/mart outputs and replay metadata remained unchanged.
+The default calendar uses status-change captures, not every assignment capture.
+Counts describe eventual retained identities, not a historical known/citywide cohort.
+[Reporting contracts](REPORTING_CONTRACTS.md#historical-observed-status) define the
+status mapping, lineage, denominators and scope. M5 remains in progress; Streamlit
+is next.
 
 ## M6 — Public portfolio quality
 - [ ] CI pipeline runs lint/pytest/dbt build in offline demo mode.
