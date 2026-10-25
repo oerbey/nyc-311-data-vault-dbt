@@ -1,6 +1,6 @@
 # Data Vault 2.0 Architecture — NYC 311
 
-**Status:** Required M3 and M4 models/temporal checks implemented; M5 resolution-time mart implemented; remaining reporting models/dashboard are proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status:** Required M3 and M4 models/temporal checks implemented; M5 resolution-time and request-trend marts implemented; remaining reporting models/dashboard are proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles
 
@@ -720,3 +720,32 @@ No new hashes/load clocks or Raw Vault changes are introduced. Each model commit
 independently. Source/mode and request/valid-duration/event populations remain explicit.
 See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for fields, denominator rules,
 commands, limitations and verified synthetic aggregates. M5 is not complete.
+
+## Implemented request-event trends (2026-10-24)
+
+`mart_resolution_times` feeds `marts.int_request_trend_population` (all request rows),
+then `int_request_trend_events` (at most one usable created/closed endpoint each),
+then `mart_request_trends` (source/mode/date + observed agency/problem/borough).
+Grouping context is exact text from the selected lifecycle version's supporting
+successful landing observation, with explicit lifecycle_capture attribution.
+It is a coherent captured tuple, not event-time/current assignment. No historical
+Link fan-out or independent dimension carry-forward is used. Missing labels remain
+NULL/blank groups; missing endpoints stay in the population without invented events.
+Original version/batch/load provenance survives. Source corrections can restate
+current derived counts; Raw Vault versions and existing marts remain unchanged.
+Guards require matching successful lifecycle evidence and consistent upstream
+projection/dates/counters. See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md)
+for event grain, attribution tradeoff, denominators, query examples and verification.
+M5 remains incomplete; agency performance is the next slice.
+
+### Concurrent effectivity first-build visibility fix (2026-10-24)
+
+Full regression exposed a shared adapter-cache race while the two effectivity
+Satellites first build concurrently: the cache can advertise an uncommitted table
+not yet readable by the other model. The shared history guard now queries the
+current connection's visible catalog before referencing stored history. It retains
+identical row/hash/namespace/retraction checks for visible tables, with no model
+ordering, stored-data or hash changes. Two deterministic regression tests seed an
+absent cached agency/problem relation. The original guard fails the negative
+control; both cases pass with catalog visibility checks. Copied-database builds
+still pass all 256 dbt data tests and preserve all prior base/BV/resolution outputs.

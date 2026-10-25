@@ -108,7 +108,7 @@ time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
 and preflight status/Hub integrity; no new refresh clock.
-M1 tooling and M6 CI/release tasks remain separately tracked. The first resolution-time mart is implemented; remaining marts/dashboard are pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time and request-trend marts are implemented; remaining marts/dashboard are pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
 
 
 M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
@@ -136,4 +136,26 @@ validity. Retain zero, exclude unusable/negative pairs only from valid duration
 statistics. Never combine synthetic/live populations implicitly or infer resolution
 from status/closure absence. Follow docs/REPORTING_CONTRACTS.md for grain,
 denominators and sample coverage. Preflight rejects raw or BV drift before view
-replacement; Raw safeguards stay unchanged. M5 is incomplete; request trends follow.
+replacement; Raw safeguards stay unchanged. M5 is incomplete; request trends are implemented below.
+
+
+The second M5 slice is marts.mart_request_trends with supporting population/event
+views. Event grain is request_hk + created/closed type; aggregate grain is source,
+mode, NYC event date and exact observed agency/problem/borough. Context comes from
+the successful landing row supporting selected Raw lifecycle batch/key/source/mode/
+capture; raw lifecycle strings must agree. Keep lifecycle_capture attribution explicit:
+these labels are not event-time or latest assignment, and assignment-only changes
+do not refresh them. Retain missing context/excluded endpoints in population,
+nullable/blank grouping text and original version/load lineage. Usable closures
+remain eligible independently of creation/order. Never infer zero-coverage days,
+backlog or rates from source-event totals. Preflight rejects missing/inconsistent
+landing evidence and upstream mart drift; preserve all Raw safeguards. Follow
+docs/REPORTING_CONTRACTS.md. M5 remains in progress; agency performance is next.
+
+
+The shared effectivity history guard resolves existing Satellite visibility through
+this connection's information_schema catalog. A dbt adapter cache entry can precede
+another thread's first CREATE commit; never treat that cache alone as proof a table
+is readable. Retain the two-table history/retraction checks for all visible stored
+relations. Deterministic tests seed absent cached agency/problem relations; do not
+replace the history guard with retries, suppression or test-only serialization.

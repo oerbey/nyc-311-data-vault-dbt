@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. First M5 resolution-time mart verified; remaining reporting slices are pending. Foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time and request-trend marts verified; remaining reporting slices are pending. Foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -241,13 +241,14 @@ historical lifecycle as-of metrics, response-time/SLA analysis and marts are out
 this slice. No new extraction was performed. M1/M6 tasks remain separately tracked.
 
 ## M5 — Marts + dashboard
-- [ ] mart_request_trends with created and closed event metrics.
+- [x] mart_request_trends with separate created/closed event counts and explicit lifecycle-capture context.
 - [ ] mart_agency_performance with carefully defined rates, median and p90 closure time.
 - [x] mart_resolution_times with request-grain latest lifecycle dates, valid durations and exclusions.
 - [ ] mart_historical_status.
 - [ ] Streamlit dashboard for volumes, response performance and *observed* backlog.
 - [x] Document resolution-time mart grain, denominators, event-date eligibility and population coverage.
-- [ ] Extend denominator/grain/population contracts to remaining marts and dashboard.
+- [x] Document request-trend event/population grains, context attribution, exclusions and coverage.
+- [ ] Extend denominator/grain/population contracts to agency performance, historical status and dashboard.
 **Acceptance:** plots reproduce tested synthetic aggregates and never imply filtered data are whole-city totals.
 
 First M5 slice verified on 2026-10-24: `marts.mart_resolution_times` preserves
@@ -259,6 +260,16 @@ builds passed 94 selected / 230 project dbt data tests and matched 518 request r
 (498 eligible, 20 excluded). All prior base tables/BV outputs and replay provenance
 were unchanged. [Reporting contracts](REPORTING_CONTRACTS.md) define date/denominator/
 coverage limits. M5 remains in progress; request trends are the next slice.
+
+Second M5 slice verified on 2026-10-24: request trends retain source/mode and exact
+observed context from selected lifecycle evidence, with separate NYC creation/closure
+contributions and request-level audit/exclusions. Twenty-two offline cases and Ruff
+passed. Copied builds passed 120 selected / 256 full-project dbt tests; independent
+Python reconstruction matched 267 groups, 518 creation and 498 closure contributions.
+Prior base tables, BV outputs, resolution mart and replay provenance remained
+unchanged. Context is lifecycle_capture, not historical/current assignment; source
+event trends are not backlog or citywide totals. M5 remains in progress; agency
+performance is next. See [reporting contracts](REPORTING_CONTRACTS.md).
 
 ## M6 — Public portfolio quality
 - [ ] CI pipeline runs lint/pytest/dbt build in offline demo mode.

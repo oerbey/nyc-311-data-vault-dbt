@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 has started with the resolution-time mart; other reporting marts and dashboard remain pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time and request-trend marts are implemented; agency performance, historical status and dashboard remain pending.**
 
 ## Project documentation
 
@@ -26,6 +26,26 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
 
 
+
+## Request-event trends — second M5 slice
+
+From `nyc_311_requests`:
+
+```bash
+dbt build --profiles-dir . --select +mart_request_trends
+```
+
+`marts.mart_request_trends` reports separate creation and closure counts by NYC
+event date, source/mode and exact observed agency/problem/borough. Context comes
+from the landing row supporting the selected lifecycle version, with
+`dimension_basis='lifecycle_capture'`; it does not establish assignment at an earlier
+event date or the latest agency. Assignment-only changes leave this context fixed.
+The request population/exclusion view and event view preserve audit lineage.
+
+Current retained sample: 518 usable creations and 498 usable closures across 267
+trend groups. These are scoped source-event counts, not backlog or citywide totals.
+See the [reporting contracts](docs/REPORTING_CONTRACTS.md) for attribution,
+eligibility, exclusions, reconciliation queries and limitations. M5 remains in progress.
 
 ## Resolution-time mart — first M5 slice
 

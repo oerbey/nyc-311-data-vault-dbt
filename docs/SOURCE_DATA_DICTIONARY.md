@@ -244,3 +244,19 @@ partition that population by existing `is_duration_valid`. Each event eligibilit
 counter depends only on its own usable date, independently of duration order or
 status. Counters are BIGINT; no source fields or hashes are added. See
 [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for denominator/scope semantics.
+
+## Implemented request-trend mapping
+
+Selected lifecycle `batch_id` + original request key + source/mode/capture identify
+one successful landing row whose raw created/closed/due strings must agree. Its
+exact agency/complaint_type/borough map to observed_agency_bk /
+observed_complaint_type / observed_borough, with dimension batch/capture lineage.
+No event-time/current assignment or new business identity is inferred. Unloaded
+lifecycle is distinct from captured missing context through is_dimension_observed;
+missing flags inspect whitespace without changing grouping text.
+Each usable created_event_date_nyc / closed_event_date_nyc maps to one event-view
+contribution with type created/closed. Aggregation groups source, mode, local event
+date and observed context into separate BIGINT counts, labelled lifecycle_capture.
+No report clock, hash or source date interpretation is added. The population keeps
+excluded endpoints; closure-date eligibility remains independent of duration order.
+See [REPORTING_CONTRACTS.md](REPORTING_CONTRACTS.md) for attribution and scope limits.
