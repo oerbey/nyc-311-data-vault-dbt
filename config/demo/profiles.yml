@@ -1,0 +1,8 @@
+nyc_311_requests:
+  target: demo
+  outputs:
+    demo:
+      type: duckdb
+      path: "{{ env_var('NYC311_DEMO_DATABASE') }}"
+      schema: main
+      threads: 4

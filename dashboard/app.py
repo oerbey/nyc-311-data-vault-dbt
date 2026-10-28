@@ -36,15 +36,52 @@ EVENT_NAMES = {"created_request_count": "Created", "closed_request_count": "Clos
 
 
 def metric_columns(items):
-    for column, (label, value) in zip(st.columns(len(items)), items, strict=True):
-        column.metric(label, value)
+    # Two columns allow labels and values to fit more comfortably at narrow widths.
+    for start in range(0, len(items), 2):
+        batch = items[start : start + 2]
+        for column, (label, value) in zip(st.columns(len(batch)), batch, strict=True):
+            column.metric(label, value)
 
 
 def pick(label, frame, column, key, format_func=exact_label):
     values = options(frame, column)
-    return st.multiselect(
+    selected = st.multiselect(
         label, values, default=values, format_func=format_func, key=key
     )
+    with st.expander(f"Full selected values: {label}"):
+        if selected:
+            st.code(
+                "\n".join(format_func(value) for value in selected),
+                language=None,
+                wrap_lines=True,
+            )
+        else:
+            st.caption("No values selected.")
+    return selected
+
+
+def chart_data(title, frame, key):
+    """Provide a paged, text table for the same values used by each chart."""
+    with st.expander(f"Chart data: {title}"):
+        total = len(frame)
+        pages = max(1, (total + 24) // 25)
+        page = st.number_input(
+            "Page",
+            min_value=1,
+            max_value=pages,
+            value=1,
+            step=1,
+            key=key + "_page",
+            help="25 chart rows per page",
+        )
+        if page is None:
+            st.info("Choose a page to view chart data.")
+            return
+        st.caption(f"{total:,} rows; page {page} of {pages}.")
+        st.table(
+            frame.iloc[(page - 1) * 25 : page * 25].reset_index(drop=True),
+            hide_index=True,
+        )
 
 
 def evidence(frame, namespace, query_id, filters, definitions, derived=None):
@@ -81,14 +118,12 @@ def event_trends(data, ns, scope):
     )
     frame, population = data["trends"], data["population"]
     selections = {}
-    for col, label, column in zip(
-        st.columns(3),
+    for label, column in zip(
         ["Agency context", "Problem context", "Borough context"],
         ["observed_agency_bk", "observed_complaint_type", "observed_borough"],
         strict=True,
     ):
-        with col:
-            selections[column] = pick(label, population, column, scope + column)
+        selections[column] = pick(label, population, column, scope + column)
     frame = context_filter(frame, selections)
     population = context_filter(population, selections)
     if frame.empty:
@@ -149,6 +184,11 @@ def event_trends(data, ns, scope):
             .properties(height=300)
         )
         st.altair_chart(chart, width="stretch")
+        chart_data(
+            "Event dates",
+            daily.rename(columns={"event_date_nyc": "NYC event date", **EVENT_NAMES}),
+            scope + "daily",
+        )
         by = st.selectbox(
             "Compare event volumes by",
             ["Agency", "Problem", "Borough"],
@@ -185,6 +225,11 @@ def event_trends(data, ns, scope):
             .properties(height=max(160, len(comparison) * 35)),
             width="stretch",
         )
+        chart_data(
+            "Event comparison",
+            comparison.rename(columns={"context": by, **EVENT_NAMES}),
+            scope + "comparison",
+        )
     st.caption(
         f"Selected context, all event dates: {len(population):,} retained requests; "
         f"{int((1 - population.created_event_eligible_count).sum()):,} without usable creation dates; "
@@ -206,19 +251,16 @@ def durations(data, ns, scope):
         "Latest reported creation-to-closure duration · agency observed with the lifecycle capture"
     )
     population = data["population"]
-    a, b = st.columns(2)
-    with a:
-        agencies = pick(
-            "Agency context", population, "observed_agency_bk", scope + "agency"
-        )
-    with b:
-        cohorts = pick(
-            "NYC creation month",
-            population,
-            "created_cohort_month_nyc",
-            scope + "cohort",
-            lambda v: "Unknown month" if v is None else str(pd.Timestamp(v).date()),
-        )
+    agencies = pick(
+        "Agency context", population, "observed_agency_bk", scope + "agency"
+    )
+    cohorts = pick(
+        "NYC creation month",
+        population,
+        "created_cohort_month_nyc",
+        scope + "cohort",
+        lambda v: "Unknown month" if v is None else str(pd.Timestamp(v).date()),
+    )
     selections = {"observed_agency_bk": agencies, "created_cohort_month_nyc": cohorts}
     population = context_filter(population, selections)
     detail = context_filter(data["agency"], selections)
@@ -280,6 +322,27 @@ def durations(data, ns, scope):
                 .properties(height=max(180, len(eligible) * 50)),
                 width="stretch",
             )
+            chart_data(
+                "Eligible duration by agency",
+                eligible[
+                    [
+                        "agency",
+                        "eligible_durations",
+                        "mean_hours",
+                        "median_hours",
+                        "p90_hours",
+                    ]
+                ].rename(
+                    columns={
+                        "agency": "Agency",
+                        "eligible_durations": "Eligible durations",
+                        "mean_hours": "Mean hours",
+                        "median_hours": "Median hours",
+                        "p90_hours": "P90 hours",
+                    }
+                ),
+                scope + "duration_chart",
+            )
         st.subheader("Coverage and pooled statistics")
         display_columns = {
             "agency": "Agency",
@@ -307,6 +370,23 @@ def durations(data, ns, scope):
             hide_index=True,
             width="stretch",
         )
+        with st.expander("Agency details in a narrow table"):
+            agency_choice = st.selectbox(
+                "Agency for details",
+                pooled.agency.tolist(),
+                key=scope + "agency_detail",
+            )
+            detail_row = (
+                pooled.loc[pooled.agency == agency_choice]
+                .iloc[0]
+                .rename(index=display_columns)
+            )
+            st.table(
+                detail_row.drop(labels="Agency")
+                .rename_axis("Measure")
+                .reset_index(name="Value"),
+                hide_index=True,
+            )
         st.caption(
             "Each row pools request-level durations across selected cohorts; subgroup medians and p90s are never averaged. Coverage shares use retained requests as denominator. Agencies without eligible pairs remain in this table and have no plotted duration."
         )
@@ -321,6 +401,11 @@ def durations(data, ns, scope):
         ).str.capitalize()
         st.bar_chart(
             quality.rename(columns={"requests": "Requests"}), x="Quality", y="Requests"
+        )
+        chart_data(
+            "Duration quality",
+            quality[["Quality", "requests"]].rename(columns={"requests": "Requests"}),
+            scope + "quality",
         )
         captures = population.snapshot_at_utc.dropna()
         if len(captures):
@@ -363,7 +448,7 @@ def observed_status(data, ns, scope):
     known = int(current.status_observed_request_count.sum())
     metric_columns(
         [
-            ("Retained identities at instant", retained),
+            ("Retained", retained),
             ("Observed status", known),
             ("Unknown status", int(current.status_unknown_request_count.sum())),
             ("Status coverage", f"{known / retained:.1%}" if retained else "—"),
@@ -384,7 +469,7 @@ def observed_status(data, ns, scope):
             .mark_bar()
             .encode(
                 y=alt.Y("reported_status:N", title="Exact reported status / evidence"),
-                x=alt.X("sum(request_count):Q", title="Retained identities"),
+                x=alt.X("sum(request_count):Q", title="Retained"),
                 color=alt.Color("agency:N", title="Observed-as-of agency"),
                 tooltip=[
                     "reported_status:N",
@@ -395,6 +480,21 @@ def observed_status(data, ns, scope):
             )
             .properties(height=max(200, display.reported_status.nunique() * 35)),
             width="stretch",
+        )
+        status_rows = display.groupby(
+            ["reported_status", "agency", "status_class"], as_index=False, dropna=False
+        )["request_count"].sum()
+        chart_data(
+            "Status by agency",
+            status_rows.rename(
+                columns={
+                    "reported_status": "Reported status",
+                    "agency": "Agency",
+                    "status_class": "Status class",
+                    "request_count": "Requests",
+                }
+            ),
+            scope + "status_chart",
         )
     timeline = scoped.groupby("as_of_utc", as_index=False)[
         ["status_observed_request_count", "status_unknown_request_count"]
@@ -428,6 +528,17 @@ def observed_status(data, ns, scope):
             )
             .properties(height=230),
             width="stretch",
+        )
+        chart_data(
+            "Status coverage",
+            timeline.rename(
+                columns={
+                    "as_of_utc": "As-of instant (UTC)",
+                    "status_observed_request_count": "Observed",
+                    "status_unknown_request_count": "Unknown",
+                }
+            ),
+            scope + "coverage",
         )
     st.caption(
         "Points represent only retained PIT instants; gaps are not interpolated. The default calendar uses loaded status-change captures, so agency-only captures may be absent. Counts repeat identities across instants and must not be added. Agency filters follow observed assignment at each instant, so their populations can change."

@@ -1,7 +1,7 @@
 # Reporting contracts
 
 All four reporting marts and the Streamlit dashboard are implemented.
-Automated checks pass; rendered browser review remains pending. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
+Automated checks pass; follow-up review of the revised layout and chart-data tables remains pending. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Build and reporting grain
 
@@ -672,3 +672,26 @@ A loopback preview starts successfully. Actual browser/native tools reported no
 available backend, so rendered desktop/narrow readability, hover and keyboard
 review were **not performed**. Keep that M5 checklist item open. Automated app/spec
 checks do not substitute for a visual review. M6 offline CI/release work is separate.
+
+
+### Visual review follow-up (2026-10-28)
+
+The user reviewed the initial dashboard at desktop and narrow widths. Desktop
+charts and legends, filter interactions, coverage, exports and empty states were
+reported readable or working. Narrow selection chips and the retained-status metric
+label were truncated; the duration table required horizontal scrolling. Individual
+chart marks had no keyboard focus path in the rendered accessibility tree.
+
+Each multiselect now provides a wrapped, full-text list of selected values. Filters
+are stacked, metric rows use at most two columns, and the status metric label is
+shorter. The duration view offers a two-column per-agency detail table alongside
+the existing summary. Each chart has an adjacent expandable, paged static table
+containing the same filtered, aggregated values; pages contain up to 25 rows and
+all rows remain available. These alternatives do not make chart marks focusable.
+
+Twenty-nine offline Streamlit checks passed, including filtered chart-table totals,
+narrow agency-detail values and access to the final page of a 53-row chart table.
+The actual revised UI, screen-reader semantics and keyboard navigation have not yet
+been reviewed in a browser because the browser/native backend remained unavailable.
+The user-reported review applies to the original layout. Keep the follow-up check
+open until the updated UI has been inspected.
