@@ -1,0 +1,53 @@
+name: Offline synthetic CI
+
+'on':
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic:
+    name: Lint, tests and synthetic warehouse
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      DBT_SEND_ANONYMOUS_USAGE_STATS: 'false'
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: 'false'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13.5'
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: Install locked dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r requirements-lock.txt
+          .venv/bin/python -m pip check
+      - name: Isolate existing database
+        shell: bash
+        run: |
+          ci_dir="$(mktemp -d "$RUNNER_TEMP/nyc311-ci.XXXXXX")"
+          printf 'NYC311_CI_DIR=%s\n' "$ci_dir" >> "$GITHUB_ENV"
+          if [ -f data/nyc_open_data.db ]; then
+            mv data/nyc_open_data.db "$ci_dir/checked_out_nyc_open_data.db"
+          fi
+      - name: Lint
+        run: make lint
+      - name: Run offline Python tests
+        run: make test
+      - name: Build and replay synthetic warehouse
+        shell: bash
+        run: |
+          make demo "DEMO_DATABASE=$NYC311_CI_DIR/nyc_open_data.db"
+          .venv/bin/python scripts/verify_synthetic_replay.py "$NYC311_CI_DIR/nyc_open_data.db"
+          test ! -e data/nyc_open_data.db
