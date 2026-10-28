@@ -336,6 +336,8 @@ and keyboard/screen-reader navigation remains open. M5 is not yet marked complet
 ## M6 — Public portfolio quality
 - [x] Add a CI workflow for lint, Python tests, and a synthetic dbt build and replay.
 - [x] Verify the first GitHub-hosted CI run after the workflow is committed and pushed.
+- [x] Make the README a concise portfolio entry point, preserve implementation notes, foreground test/environment evidence and untrack macOS metadata.
+- [x] Add the main-branch CI badge after verifying the latest workflow run completed successfully.
 - [ ] Publish dbt docs/lineage, architecture diagram, screenshots, example SQL and known limitations.
 - [x] Test fresh clone setup and document all commands actually executed.
 - [x] Add concise, verifiable CV bullet and source attribution in [the portfolio overview](PORTFOLIO.md).
@@ -362,6 +364,38 @@ Dashboard review progress on 2026-10-28: the synthetic event, agency and status 
 Release-branch verification on 2026-10-28: Ruff and all 393 Python tests passed (one IPython temporary-directory warning). An isolated synthetic database passed all 332 dbt build nodes and replay verification. The portfolio SQL examples all executed against the synthetic database; the README and overview's local links resolved.
 
 The tracked database is approximately 6.8 MB and contains one successful live landing batch (515 accepted rows), three synthetic batches, and a 1,000-row exploratory table with address and coordinate columns. It is unsuitable as the distributed demo sample. Preserve the local file and remove it from future Git tracking; synthetic fixtures are the reproducibility baseline. History removal is a separate decision.
+
+
+Portfolio presentation and hygiene verified on 2026-10-28: the README now presents
+stack, architecture, the existing fictional-data screenshot, locked-environment
+quickstart, testing evidence and interpretation limits near the top. Detailed
+sections from the previous README are preserved in [the implementation guide](IMPLEMENTATION_GUIDE.md)
+with a contents list, historical-status notice and rebased links. The portfolio
+companion explicitly describes local DuckDB/synthetic data and dated test evidence.
+Both tracked `.DS_Store` files were removed from the Git index; local copies and
+the existing recursive ignore rule were preserved. Existing warehouse files and
+local metadata copies remained byte-for-byte unchanged. Ruff and `pip check`
+passed; a new temporary synthetic database passed all 332 build nodes (including
+296 dbt data tests) and full-build replay preserved every stored value/provenance
+field. Local documentation links, anchors and images resolved; the original
+detailed body matched exactly after reversing link rebasing. A local browser
+preview rendered the Mermaid architecture and existing screenshot. This is a
+repository documentation slice, not hosted publication or a new dashboard
+accessibility review. The [latest main CI run checked](https://github.com/oerbey/nyc-311-data-vault-dbt/actions/runs/40686163047)
+was still in progress, so the dynamic badge is deferred; the earlier successful
+run remains linked as dated evidence.
+
+An additional full Python rerun was intentionally interrupted after 111 passing
+tests (273 seconds), with no failures reported; it was not a completed suite run.
+The 393-test figures in the README and portfolio remain explicitly dated evidence
+from the earlier completed verification. No runtime or test code changed here.
+
+CI badge follow-up verified on 2026-10-28: the GitHub Actions API confirmed that
+[main run 40686163047](https://github.com/oerbey/nyc-311-data-vault-dbt/actions/runs/40686163047)
+completed with conclusion `success` for commit `15941da5414bcfb063766370278ef2496a24c2aa`.
+This supersedes the pending-run note above. The README now includes the dynamic
+`offline-ci.yml` badge scoped to `main`, linked to the workflow page; the README
+and portfolio evidence links point to this completed run.
 
 ## Delivery rules
 1. Ship the simplest correct vertical slice first: request Hub + status Satellite + as-of test.

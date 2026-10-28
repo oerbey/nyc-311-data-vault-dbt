@@ -1,6 +1,6 @@
 # Portfolio overview
 
-This project builds an observed-history NYC 311 service analytics warehouse with Python, DuckDB, dbt Core and Data Vault 2.0. Its reproducible baseline uses fictional synthetic snapshots and needs no NYC API credentials.
+This project builds an observed-history NYC 311 service analytics warehouse with Python, DuckDB, dbt Core and Data Vault 2.0. Its reproducible baseline uses fictional synthetic snapshots in local DuckDB and needs no NYC API credentials. It demonstrates local analytics; no production cloud deployment is demonstrated. Start with the [README quickstart](../README.md#reproduce-the-synthetic-demo) or consult the [detailed implementation guide](IMPLEMENTATION_GUIDE.md).
 
 ```mermaid
 flowchart LR
@@ -38,6 +38,17 @@ flowchart LR
 
 ![Observed status dashboard using fictional synthetic fixtures](images/dashboard-status-synthetic.jpg)
 
+## Testing evidence
+
+Recorded verification on October 28, 2026: Ruff passed, all 393 Python tests passed
+(with one IPython temporary-directory warning), and the synthetic dbt build passed
+332 nodes, including 296 dbt data tests. Full-build replay preserved stored values
+and provenance. Coverage includes DST uncertainty, adjacent status reversals, agency
+reassignment, historical-rewrite rejection, idempotency and dashboard calculations.
+The [GitHub-hosted main-branch run](https://github.com/oerbey/nyc-311-data-vault-dbt/actions/runs/40686163047)
+succeeded on that date. See [local check commands](../README.md#testing-and-ci) and
+the [roadmap](IMPLEMENTATION_ROADMAP.md#m6--public-portfolio-quality) for evidence.
+
 ## Dashboard accessibility review
 
 Chart marks are not keyboard-focusable. Each chart has a **Chart data** expander containing a paged text table with the same plotted values. Browser inspection confirmed scoped HTML column headers, and Enter opened representative expanders. A complete screen-reader review is still pending.
@@ -72,7 +83,7 @@ make demo
 make demo-dashboard
 ```
 
-Clone and installation require network access. The checks and demo use synthetic data without NYC API credentials. The dashboard opens the local URL printed by Streamlit.
+Clone and installation require network access. The checks and demo use synthetic data without NYC API credentials. The dashboard opens the local URL printed by Streamlit and uses `data/demo/nyc_open_data.db` by default. If overriding `DEMO_DATABASE`, use the same path for the build and dashboard; pass that path to the replay verifier too.
 
 [Example SQL](../sql_queries/portfolio_examples.sql) queries the built synthetic database for event trends, duration coverage, observed status and agency relationship history.
 
