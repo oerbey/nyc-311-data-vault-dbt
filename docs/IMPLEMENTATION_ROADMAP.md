@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; rendered browser review remains pending. Foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; follow-up review of the revised narrow layout and keyboard alternatives remains pending. Foundation/CI tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -15,7 +15,7 @@ The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI ag
 ## M1 — Reproducible environment + synthetic demo
 - [x] Confirm Python 3.11+ setup; verify installation in a clean macOS virtual environment.
 - [x] Pin validated package versions/lockfile after compatibility smoke tests.
-- [ ] Create dbt-duckdb project, profile example, .env.example, Makefile and local DuckDB database.
+- [x] Create dbt-duckdb project, reusable demo profile, .env.example, Makefile and local DuckDB database.
 - [x] Build deterministic synthetic request snapshots, including a status reversion and agency reassignment.
 - [x] Extend .gitignore for local DuckDB/WAL files, outputs, logs, dbt target, extracts (notebook outputs must still be cleared before commit).
 **Acceptance:** a new user can start the offline synthetic project without API tokens; repeat runs are deterministic.
@@ -23,6 +23,14 @@ The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI ag
 Environment slice verified on 2026-10-18: macOS ARM64, Python 3.13.5 in `.venv`; requirements installed; `pip check`, dbt CLI/duckdb adapter discovery, JupyterLab CLI, and in-memory DuckDB smoke test passed. Exact resolved versions are in `requirements-lock.txt`; full dbt execution and synthetic demo remain pending. The connection notebook passed schema/syntax validation, Ruff, and offline mocked DataFrame/error/retry checks. It preserves the user's broader date filter and all requested fields for an in-memory sample only, with a 1,000-row default limit and deterministic tie ordering. Live requests and live schema validation are deferred to the user's run; M2 items remain unchecked.
 
 Exploratory SQL slice verified on 2026-10-18: `run_sql_queries.ipynb` reuses the API notebook, registers its bounded DataFrame, and executes `create_311_service_request.sql` into `data/nyc_open_data.db`. The replaceable sample table includes `snapshot_at_utc` and `record_source`; it is outside the planned historical landing/Vault pipeline. Notebook schema/syntax and an offline mocked GET-to-DuckDB run passed from both repository and notebook directories, including persistence, replacement and failed-fetch stale-data protection. No live API call or project database write was performed during verification. M1/M2 warehouse milestones remain pending.
+
+Offline setup slice verified on 2026-10-28: `make demo` loads the three deterministic
+fixtures into a separate `data/demo/nyc_open_data.db` and runs the full dbt build
+through `config/demo/profiles.yml`. A temporary database passed all 296 dbt tests;
+a replay preserved every table, view, audit and first-load timestamp. A database
+path with spaces also passed the build. The existing project database is not the
+default target. The commands use already installed dependencies; fresh-clone
+installation remains a separately tracked M6 check.
 
 ## M2 — Ingestion and staging
 - [x] Implement offline landing schema, transactional batch audit, immutable observations, and replay protection.
@@ -246,7 +254,8 @@ this slice. No new extraction was performed. M1/M6 tasks remain separately track
 - [x] mart_resolution_times with request-grain latest lifecycle dates, valid durations and exclusions.
 - [x] mart_historical_status with exact status groups, unknown coverage and observed-as-of agency.
 - [x] Streamlit dashboard for event volumes, reported closure durations and observed status/coverage.
-- [ ] Complete rendered desktop/narrow-layout review; browser/native backend unavailable during implementation.
+- [x] Review the original dashboard on desktop and at a narrow width.
+- [ ] Recheck the revised narrow layout and keyboard/screen-reader access to chart data; no browser backend was available for the follow-up.
 - [x] Document resolution-time mart grain, denominators, event-date eligibility and population coverage.
 - [x] Document request-trend event/population grains, context attribution, exclusions and coverage.
 - [x] Document agency/cohort attribution, unknown cohorts, count partitions, coverage fractions and quantile rules.
@@ -311,6 +320,18 @@ so actual desktop/narrow-layout visual review is still unchecked; automated app
 execution and chart-spec checks do not establish rendered readability. M5 remains
 open for that check. M6 offline CI/release tasks remain separately tracked.
 See [dashboard contract](REPORTING_CONTRACTS.md#streamlit-dashboard).
+
+Dashboard review and follow-up, 2026-10-28: the user confirmed readable desktop
+charts, correct filter/refresh/reset behavior, distinct counts, explicit scope,
+exports and empty states. The review found truncated narrow-screen selection chips
+and status metric text, a horizontally scrolling duration table, and no keyboard
+focus path to individual chart marks. Follow-up adds full wrapped selection labels,
+two-column metric rows, a short retained label, a narrow agency-detail table and
+paged text tables for each chart. Twenty-nine network-free dashboard checks passed,
+including filtered table values and pagination. The data tables are an alternative;
+the chart marks themselves have not acquired keyboard focus. Browser access remained
+unavailable for the changed dashboard, so rechecking narrow layout, table semantics
+and keyboard/screen-reader navigation remains open. M5 is not yet marked complete.
 
 ## M6 — Public portfolio quality
 - [ ] CI pipeline runs lint/pytest/dbt build in offline demo mode.

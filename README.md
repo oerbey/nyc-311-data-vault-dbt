@@ -2,7 +2,7 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
-**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; the Streamlit dashboard is implemented and tested; rendered browser review remains pending.**
+**Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; the Streamlit dashboard is implemented and tested; follow-up review of the updated narrow layout and keyboard alternatives remains pending.**
 
 ## Project documentation
 
@@ -26,6 +26,25 @@ The initial development cohort will be a bounded DEP/DSNY sample from January–
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
 
 
+
+## Run the offline synthetic demo
+
+After creating and activating `.venv` and installing the project requirements, run
+from the repository root:
+
+```bash
+make demo
+make demo-dashboard
+```
+
+`make demo` loads the fictional fixtures and runs the full dbt build using
+`config/demo/profiles.yml`. Its default database is `data/demo/nyc_open_data.db`;
+the existing project database is not the default target. A successful replay keeps
+the original observations and load timestamps. The commands use the installed
+packages and make no live NYC API request. You can select a separate path, e.g.
+`make demo DEMO_DATABASE=/tmp/nyc311-demo/nyc_open_data.db`; use the same setting
+with `make demo-dashboard`. `make demo-load` and `make demo-build` run the steps
+separately. `make lint` and `make test` run the local checks.
 
 ## Streamlit dashboard
 
@@ -57,8 +76,7 @@ relative values resolve from the repository root. Preserve the filename when cop
 an existing database because DuckDB views bind its catalog name. No live API call or
 warehouse write is made by the dashboard. Close warehouse writers before opening it.
 See the [dashboard contract](docs/REPORTING_CONTRACTS.md#streamlit-dashboard) for
-filter scope, provenance, exclusions and verification. Automated UI/data checks
-passed; rendered browser review was unavailable in this implementation session.
+filter scope, provenance, exclusions and verification. The initial desktop and narrow-layout review found truncated labels and a chart keyboard gap. The dashboard now supplies full selection labels, compact metric rows, per-agency details and paged chart data tables. A follow-up rendered and keyboard review of these changes remains pending.
 
 ## Historical observed status — fourth M5 slice
 

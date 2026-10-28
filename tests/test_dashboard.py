@@ -347,7 +347,7 @@ def test_status_asof_agency_and_coverage_controls(app):
     assert metrics(app)["Status coverage"] == "0.0%"
     select(app, "As-of instant (UTC)").set_value(pd.Timestamp(INSTANTS[-1])).run()
     multi(app, "Observed-as-of agency").set_value(["DSNY"]).run()
-    assert not app.exception and metrics(app)["Retained identities at instant"] == "2"
+    assert not app.exception and metrics(app)["Retained"] == "2"
     multi(app, "Observed-as-of agency").set_value([]).run()
     assert not app.exception and metrics(app)["Status coverage"] == "—"
 
@@ -502,3 +502,48 @@ def test_duration_export_includes_pooled_plot_values_and_lineage(warehouse):
         and derived["sql"] == QUERIES["population"]
     )
     assert "request_hk" not in derived["rows"][0]
+
+
+def test_chart_tables_follow_event_filters_and_expose_complete_labels(app):
+    multi(app, "Agency context").set_value(["AGG"]).run()
+    assert not app.exception
+    chart_tables = [table.value for table in app.table]
+    event_dates = next(
+        table for table in chart_tables if "NYC event date" in table.columns
+    )
+    comparison = next(table for table in chart_tables if "Agency" in table.columns)
+    assert event_dates["Created"].sum() == 6 and event_dates["Closed"].sum() == 5
+    assert comparison["Created"].sum() == 6 and comparison["Closed"].sum() == 5
+    assert any('"AGG"' in code.value for code in app.code)
+
+
+def test_status_chart_table_and_narrow_duration_details_follow_filters(app):
+    app.sidebar.radio[0].set_value("Observed status").run()
+    multi(app, "Observed-as-of agency").set_value(["DSNY"]).run()
+    status_table = next(
+        table.value for table in app.table if "Reported status" in table.value.columns
+    )
+    assert status_table["Requests"].sum() == 2
+    app.sidebar.radio[0].set_value("Agency & duration").run()
+    multi(app, "Agency context").set_value(["AGG"]).run()
+    detail = next(
+        table.value for table in app.table if "Measure" in table.value.columns
+    )
+    assert detail.loc[detail.Measure == "Eligible durations", "Value"].iloc[0] == 4
+
+
+def test_chart_data_paginates_all_rows(tmp_path):
+    script = tmp_path / "paging_app.py"
+    script.write_text(
+        "import pandas as pd\nimport streamlit as st\nfrom dashboard.app import chart_data\n"
+        'n = st.number_input("Rows", min_value=0, max_value=100, value=53)\n'
+        'chart_data("Example", pd.DataFrame({"Value": range(n)}), "example")\n'
+    )
+    app = AppTest.from_file(str(script)).run()
+    assert not app.exception and app.table[0].value.Value.tolist() == list(range(25))
+    app.number_input[1].set_value(3).run()
+    assert not app.exception and app.table[0].value.Value.tolist() == [50, 51, 52]
+    app.number_input[0].set_value(10).run()
+    assert not app.exception and app.table[0].value.Value.tolist() == list(range(10))
+    app.number_input[0].set_value(0).run()
+    assert not app.exception and app.table[0].value.empty

@@ -108,7 +108,7 @@ time; fail rather than truncating. Rebuild to change explicit configuration.
 Accepted late Raw evidence revises current-evidence PIT answers dynamically;
 never claim event-time or warehouse-knowledge history. Preserve Raw guards/hashes
 and preflight status/Hub integrity; no new refresh clock.
-M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend, agency/cohort performance and historical-status marts and the Streamlit dashboard are implemented; rendered browser review is pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
+M1 tooling and M6 CI/release tasks remain separately tracked. Resolution-time, request-trend, agency/cohort performance and historical-status marts and the Streamlit dashboard are implemented; follow-up review of revised narrow layout and chart-data accessibility is pending. A complete one-day live extraction has been verified; the full six-month default cohort has only been counted. Do not claim scheduling, full historical status coverage or transactional API snapshots.
 
 
 M4 lifecycle metrics are implemented in business_vault.bv_request_resolution_metrics,
@@ -202,6 +202,17 @@ Export only scoped aggregate rows and reproducible query/filter/definition metad
 including pooled duration values and lineage. Paths resolve from the repo, not cwd;
 namespace values are bound parameters. Missing/busy/unbuilt data must produce
 honest errors, not a synthetic fallback. See docs/REPORTING_CONTRACTS.md.
-Automated tests pass; desktop/narrow-layout browser review remains outstanding
-because no browser/native backend was available. Keep that roadmap item unchecked.
+The user reviewed the initial dashboard and identified narrow-layout truncation
+and a keyboard gap for chart marks. Updated selection labels, compact metrics,
+narrow agency detail and paged chart-data tables have automated checks. The chart
+marks remain unfocusable; the revised layout and table keyboard/screen-reader access
+need browser review, which was unavailable. Keep that roadmap item unchecked.
 M6 CI/release tasks remain separately tracked; no publishing or scheduling is implied.
+
+
+M1 setup now includes `Makefile` and `config/demo/profiles.yml`. `make demo` uses
+synthetic fixtures and an isolated `data/demo/nyc_open_data.db` by default, followed
+by a full dbt build. Replays preserve stored rows and timestamps. Override
+DEMO_DATABASE consistently for the load, build and dashboard; never replace the
+existing project database as a setup side effect. Fresh-clone setup and CI remain
+separate M6 work. Follow-up dashboard browser accessibility review remains pending.
