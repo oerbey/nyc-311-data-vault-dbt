@@ -2,9 +2,13 @@
 
 A portfolio project for an **historized NYC 311 service-request analytics warehouse**, using Python, DuckDB, dbt Core, and Data Vault 2.0.
 
+The offline demo builds fictional snapshots into an insert-only Data Vault, observed-time reporting marts and a read-only dashboard. See the [portfolio overview](docs/PORTFOLIO.md) for architecture, limitations and a concise project summary.
+
 **Status: Landing/staging and required M3 Raw Vault models are verified. M4 observed status intervals, bounded status PIT and lifecycle duration metrics are implemented. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts are implemented; the Streamlit dashboard is implemented and tested; follow-up review of the updated narrow layout and keyboard alternatives remains pending.**
 
 ## Project documentation
+
+The detailed implementation sections below include dated historical notes; the roadmap gives the current acceptance status.
 
 - [Project plan — architecture, data ingestion, history, model contracts](docs/PROJECT_PLAN.md)
 - [Data Vault architecture — Hubs, Links, Satellites, PIT and grains](docs/DATA_VAULT_ARCHITECTURE.md)
@@ -21,7 +25,7 @@ The source provides request creation and closure event dates plus **current** st
 
 The initial development cohort will be a bounded DEP/DSNY sample from January–June 2026, with an offline synthetic fixture for reproducible CI. This is not a citywide completeness claim.
 
-## Stack (planned)
+## Stack
 
 Python 3.11+, httpx, DuckDB, dbt Core / dbt-duckdb, pytest, Ruff, GitHub Actions, and Streamlit.
 
@@ -59,7 +63,7 @@ Checkout and dependency installation require network access. The subsequent demo
 and checks use synthetic records and mocked API responses; the workflow does not
 provide operating-system network isolation. The checked-out project database, if
 present, is set aside on the temporary runner so it cannot supply the demo. The
-workflow has been checked locally; its first GitHub-hosted run remains pending.
+workflow passed on [GitHub-hosted main](https://github.com/oerbey/nyc-311-data-vault-dbt/actions/runs/40651318125) on 2026-10-28.
 
 To reproduce its data checks locally with an isolated database:
 
@@ -931,7 +935,7 @@ python -m pip install -r requirements.txt
 jupyter lab output/jupyter-notebook/nyc_311_api_connection.ipynb
 ```
 
-Validated on macOS ARM64 with Python 3.13.5: dependency installation, `pip check`, dbt CLI/adapter discovery, JupyterLab CLI, and an in-memory DuckDB query passed. [requirements-lock.txt](requirements-lock.txt) records this environment's exact resolved versions; use `python -m pip install -r requirements-lock.txt` to install those versions. Other platforms have not been tested. Full dbt project execution remains pending M1.
+Validated on macOS ARM64 with Python 3.13.5: dependency installation, `pip check`, dbt CLI/adapter discovery, JupyterLab CLI, and an in-memory DuckDB query passed. [requirements-lock.txt](requirements-lock.txt) records this environment's exact resolved versions; use `python -m pip install -r requirements-lock.txt` to install those versions. Other platforms have not been tested. The synthetic demo runs the full dbt project as described above.
 
 Open the [API connection notebook](output/jupyter-notebook/nyc_311_api_connection.ipynb) with the `.venv/bin/python` kernel and run its cells in order. The request cell loads your selected fields into `df`, using your `created_date > 2024-10-18T10:17:14` filter and a configurable 1,000-row default limit. It is a connection-test sample, outside the planned warehouse cohort; it does not paginate or load warehouse tables. The API request is left for you to run; live connectivity and selected field availability have not been verified. Notebook validation, lint, and mocked response/error/retry checks passed offline.
 

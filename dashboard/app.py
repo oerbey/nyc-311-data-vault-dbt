@@ -304,7 +304,7 @@ def durations(data, ns, scope):
                 )
                 .mark_point(filled=True, size=90)
                 .encode(
-                    y=alt.Y("agency:N", title="Lifecycle-capture agency"),
+                    y=alt.Y("agency:N", title="Agency"),
                     x=alt.X(
                         "hours:Q",
                         title="Eligible elapsed hours",
