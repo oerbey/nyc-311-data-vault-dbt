@@ -214,8 +214,7 @@ M1 setup now includes `Makefile` and `config/demo/profiles.yml`. `make demo` use
 synthetic fixtures and an isolated `data/demo/nyc_open_data.db` by default, followed
 by a full dbt build. Replays preserve stored rows and timestamps. Override
 DEMO_DATABASE consistently for the load, build and dashboard; never replace the
-existing project database as a setup side effect. Fresh-clone setup and a GitHub-hosted CI run remain
-separate M6 work. Follow-up dashboard browser accessibility review remains pending.
+existing project database as a setup side effect. Fresh-clone setup and a GitHub-hosted CI run have since been verified. Follow-up dashboard browser accessibility review remains pending.
 
 
 Offline CI uses `.github/workflows/offline-ci.yml` on macOS 15 ARM / Python 3.13.5.
@@ -227,4 +226,5 @@ still need network access and no OS-level network isolation is claimed. Older ch
 include a tracked `data/nyc_open_data.db`; the workflow sets it aside and must not
 rely on it. Preserve the local file; removing it from Git history is a separate decision.
 Local checks passed, and the GitHub-hosted main-branch run succeeded on 2026-10-28.
-M6 documentation, fresh-clone and portfolio tasks remain open.
+The fresh-clone synthetic walkthrough passed on macOS ARM / Python 3.13.5.
+M6 portfolio publication and dashboard accessibility review remain open.

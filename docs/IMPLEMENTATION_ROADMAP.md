@@ -337,7 +337,7 @@ and keyboard/screen-reader navigation remains open. M5 is not yet marked complet
 - [x] Add a CI workflow for lint, Python tests, and a synthetic dbt build and replay.
 - [x] Verify the first GitHub-hosted CI run after the workflow is committed and pushed.
 - [ ] Publish dbt docs/lineage, architecture diagram, screenshots, example SQL and known limitations.
-- [ ] Test fresh clone setup and document all commands actually executed.
+- [x] Test fresh clone setup and document all commands actually executed.
 - [x] Add concise, verifiable CV bullet and source attribution in [the portfolio overview](PORTFOLIO.md).
 **Acceptance:** a fresh environment can reproduce the synthetic project without credentials; CI passes.
 
@@ -355,7 +355,7 @@ the checks. At the time of this local verification, no GitHub-hosted run had occ
 
 The [GitHub-hosted main-branch run](https://github.com/oerbey/nyc-311-data-vault-dbt/actions/runs/40651318125) succeeded on 2026-10-28, superseding the earlier pending statement above. Dated implementation notes describe the status at their date.
 
-Clean-checkout progress on 2026-10-28: a public clone on macOS ARM with Python 3.13.5 installed the lockfile in a new virtual environment. `python -m pip check` and `make lint` passed. `make demo` passed all 332 dbt nodes (including 296 data tests), and `.venv/bin/python scripts/verify_synthetic_replay.py data/demo/nyc_open_data.db` confirmed replay stability. `make demo-dashboard` displayed the fictional dataset after the build. The full Python suite's result was not retained, so the fresh-clone checklist remains open pending a recorded complete run. Installation and cloning required network access; the demo itself did not use API credentials.
+Clean-checkout verification on 2026-10-28: cloned public `main` at `e71f094` on macOS ARM with Python 3.13.5 and installed the lockfile in a new virtual environment. `pip check` and `make lint` passed; `make test` passed 393 tests with one IPython temporary-directory warning. `make demo` passed all 332 dbt nodes (including 296 data tests), and `.venv/bin/python scripts/verify_synthetic_replay.py data/demo/nyc_open_data.db` confirmed replay stability. `make demo-dashboard` displayed the fictional dataset after the build. The exact walkthrough commands are in [the portfolio overview](PORTFOLIO.md). Clone and installation required network access; the demo did not use API credentials.
 
 Dashboard review progress on 2026-10-28: the synthetic event, agency and status views were inspected in a browser. Chart-data expanders opened with Enter and the rendered tables exposed rows and scoped column headers. At 390 pixels, a duration-chart axis title was clipped; shortening it to “Agency” preserved its lifecycle-capture context in the view description and rendered the label completely. All 29 dashboard Python tests passed. A complete keyboard and actual screen-reader review remains open; chart marks themselves remain unfocusable.
 
