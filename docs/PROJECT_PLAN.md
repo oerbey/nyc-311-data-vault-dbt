@@ -1,5 +1,7 @@
 # NYC 311 Historical Service Analytics — Project Plan
 
+The dated implementation notes below are historical records of what was complete at the time. For current acceptance status, use the [implementation roadmap](IMPLEMENTATION_ROADMAP.md).
+
 **Status:** Landing/staging, required M3 Raw Vault models/checks, and required M4 Business Vault models/temporal checks implemented; M5 resolution-time, request-trend, agency/cohort performance and historical-status marts implemented; the Streamlit dashboard is implemented and tested; rendered browser review is pending.
 **Updated:** 2026-10-25
 

@@ -223,8 +223,8 @@ It installs the existing lockfile, runs Ruff and all Python tests, then uses an
 isolated temporary synthetic database for the full dbt build and replay. The replay
 verifier checks synthetic status reversal, agency reassignment and all stored rows
 and provenance. It does not call the live NYC API; checkout and package installation
-still need network access and no OS-level network isolation is claimed. The checkout
-currently includes a tracked `data/nyc_open_data.db`; the workflow sets it aside and
-must not rely on it. Do not silently remove it from the user's repository or history.
-Local checks passed; keep the first GitHub-hosted CI verification unchecked until an
-actual run succeeds. M6 documentation, fresh-clone and portfolio tasks remain open.
+still need network access and no OS-level network isolation is claimed. Older checkouts
+include a tracked `data/nyc_open_data.db`; the workflow sets it aside and must not
+rely on it. Preserve the local file; removing it from Git history is a separate decision.
+Local checks passed, and the GitHub-hosted main-branch run succeeded on 2026-10-28.
+M6 documentation, fresh-clone and portfolio tasks remain open.

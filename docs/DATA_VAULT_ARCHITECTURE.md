@@ -1,5 +1,7 @@
 # Data Vault 2.0 Architecture — NYC 311
 
+The dated implementation notes below describe progress at their respective dates. Current milestone status is maintained in the [implementation roadmap](IMPLEMENTATION_ROADMAP.md).
+
 **Status:** Required M3 and M4 models/temporal checks implemented; M5 resolution-time, request-trend and agency/cohort performance marts implemented; historical status/dashboard remain proposed. Canonical context: [PROJECT_PLAN.md](PROJECT_PLAN.md).
 
 ## Modeling principles

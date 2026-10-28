@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; follow-up review of the revised narrow layout and keyboard alternatives remains pending. An offline CI workflow is implemented; its first GitHub-hosted run and other release tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; follow-up review of the revised narrow layout and keyboard alternatives remains pending. Offline CI passed on GitHub; remaining release tasks are tracked below.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -335,10 +335,10 @@ and keyboard/screen-reader navigation remains open. M5 is not yet marked complet
 
 ## M6 — Public portfolio quality
 - [x] Add a CI workflow for lint, Python tests, and a synthetic dbt build and replay.
-- [ ] Verify the first GitHub-hosted CI run after the workflow is committed and pushed.
+- [x] Verify the first GitHub-hosted CI run after the workflow is committed and pushed.
 - [ ] Publish dbt docs/lineage, architecture diagram, screenshots, example SQL and known limitations.
 - [ ] Test fresh clone setup and document all commands actually executed.
-- [ ] Add concise, verifiable CV bullet and source attribution.
+- [x] Add concise, verifiable CV bullet and source attribution in [the portfolio overview](PORTFOLIO.md).
 **Acceptance:** a fresh environment can reproduce the synthetic project without credentials; CI passes.
 
 Offline CI slice verified locally on 2026-10-28: the workflow uses macOS 15 ARM,
@@ -349,9 +349,19 @@ replay stability. A fresh virtual environment installed the lockfile and passed 
 check, 98 focused Python checks, and a 296-check dbt build/replay. The full Python suite passed 393 tests with one IPython temporary-directory
 warning, and workflow commands were exercised locally without the project database.
 Checkout/dependency installation need network; no live NYC API request is used by
-the checks. A GitHub-hosted run has not yet occurred. The repository currently tracks
+the checks. At the time of this local verification, no GitHub-hosted run had occurred. The repository currently tracks
 `data/nyc_open_data.db`; isolating it in CI does not remove it from Git history.
 
+
+The [GitHub-hosted main-branch run](https://github.com/oerbey/nyc-311-data-vault-dbt/actions/runs/40651318125) succeeded on 2026-10-28, superseding the earlier pending statement above. Dated implementation notes describe the status at their date.
+
+Clean-checkout progress on 2026-10-28: a public clone on macOS ARM with Python 3.13.5 installed the lockfile in a new virtual environment. `python -m pip check` and `make lint` passed. `make demo` passed all 332 dbt nodes (including 296 data tests), and `.venv/bin/python scripts/verify_synthetic_replay.py data/demo/nyc_open_data.db` confirmed replay stability. `make demo-dashboard` displayed the fictional dataset after the build. The full Python suite's result was not retained, so the fresh-clone checklist remains open pending a recorded complete run. Installation and cloning required network access; the demo itself did not use API credentials.
+
+Dashboard review progress on 2026-10-28: the synthetic event, agency and status views were inspected in a browser. Chart-data expanders opened with Enter and the rendered tables exposed rows and scoped column headers. At 390 pixels, a duration-chart axis title was clipped; shortening it to “Agency” preserved its lifecycle-capture context in the view description and rendered the label completely. All 29 dashboard Python tests passed. A complete keyboard and actual screen-reader review remains open; chart marks themselves remain unfocusable.
+
+Release-branch verification on 2026-10-28: Ruff and all 393 Python tests passed (one IPython temporary-directory warning). An isolated synthetic database passed all 332 dbt build nodes and replay verification. The portfolio SQL examples all executed against the synthetic database; the README and overview's local links resolved.
+
+The tracked database is approximately 6.8 MB and contains one successful live landing batch (515 accepted rows), three synthetic batches, and a 1,000-row exploratory table with address and coordinate columns. It is unsuitable as the distributed demo sample. Preserve the local file and remove it from future Git tracking; synthetic fixtures are the reproducibility baseline. History removal is a separate decision.
 
 ## Delivery rules
 1. Ship the simplest correct vertical slice first: request Hub + status Satellite + as-of test.
