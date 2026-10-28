@@ -36,6 +36,19 @@ flowchart LR
 
 ![Event trends dashboard using fictional synthetic fixtures](images/dashboard-synthetic.jpg)
 
+![Observed status dashboard using fictional synthetic fixtures](images/dashboard-status-synthetic.jpg)
+
+## Dashboard accessibility review
+
+Chart marks are not keyboard-focusable. Each chart has a **Chart data** expander containing a paged text table with the same plotted values. Browser inspection confirmed scoped HTML column headers, and Enter opened representative expanders. A complete screen-reader review is still pending.
+
+To complete that review with a screen reader, run `make demo-dashboard` and use the fictional dataset:
+
+1. Using only the keyboard, select each view and expand each **Chart data** section. Check that focus is visible and the section's expanded state is announced.
+2. Navigate each table with screen-reader table commands. Confirm the column headers and values are announced together and agree with the chart. Check the **Page** control and page count on a dataset with more than 25 chart rows.
+3. At a narrow viewport, check full selected-value expanders, agency details, filters, tables and export controls. Confirm values are reachable without a mouse and labels are not clipped.
+4. Record the screen reader, browser, viewport and results in the roadmap. Report any failures before marking the accessibility item complete.
+
 ## Limits
 
 NYC 311 is a current-state feed, not a complete status change log. Status before the first observation is unknown, and snapshot captures do not establish source-change times. Event-date trends and snapshot-as-of status answer different questions. The synthetic demo is fictional and does not represent citywide coverage. Closure duration is based on usable reported creation and closure timestamps, not an SLA or causal measure of agency performance. The optional live extraction has verified a one-day cohort; the six-month cohort has only been counted. The API does not provide a transactional snapshot across pages.
