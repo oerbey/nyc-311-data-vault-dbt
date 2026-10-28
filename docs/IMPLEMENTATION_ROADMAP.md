@@ -1,6 +1,6 @@
 # NYC 311 — Implementation Roadmap
 
-**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; follow-up review of the revised narrow layout and keyboard alternatives remains pending. Foundation/CI tasks remain separately tracked.
+**Status:** Required M3 and M4 models/temporal checks complete for retained evidence. M5 resolution-time, request-trend, agency/cohort performance and historical-status marts verified; Streamlit dashboard implemented with automated checks; follow-up review of the revised narrow layout and keyboard alternatives remains pending. An offline CI workflow is implemented; its first GitHub-hosted run and other release tasks remain separately tracked.
 
 The full implementation contract is in [PROJECT_PLAN.md](PROJECT_PLAN.md). AI agents must follow [../AGENTS.md](../AGENTS.md).
 
@@ -334,11 +334,24 @@ unavailable for the changed dashboard, so rechecking narrow layout, table semant
 and keyboard/screen-reader navigation remains open. M5 is not yet marked complete.
 
 ## M6 — Public portfolio quality
-- [ ] CI pipeline runs lint/pytest/dbt build in offline demo mode.
+- [x] Add a CI workflow for lint, Python tests, and a synthetic dbt build and replay.
+- [ ] Verify the first GitHub-hosted CI run after the workflow is committed and pushed.
 - [ ] Publish dbt docs/lineage, architecture diagram, screenshots, example SQL and known limitations.
 - [ ] Test fresh clone setup and document all commands actually executed.
 - [ ] Add concise, verifiable CV bullet and source attribution.
 **Acceptance:** a fresh environment can reproduce the synthetic project without credentials; CI passes.
+
+Offline CI slice verified locally on 2026-10-28: the workflow uses macOS 15 ARM,
+Python 3.13.5 and the recorded lockfile. It sets any checked-out project database
+aside, runs lint and the network-free Python suite, then builds synthetic data in a
+new temporary database and verifies status reversal, agency reassignment, and full
+replay stability. A fresh virtual environment installed the lockfile and passed pip
+check, 98 focused Python checks, and a 296-check dbt build/replay. The full Python suite passed 393 tests with one IPython temporary-directory
+warning, and workflow commands were exercised locally without the project database.
+Checkout/dependency installation need network; no live NYC API request is used by
+the checks. A GitHub-hosted run has not yet occurred. The repository currently tracks
+`data/nyc_open_data.db`; isolating it in CI does not remove it from Git history.
+
 
 ## Delivery rules
 1. Ship the simplest correct vertical slice first: request Hub + status Satellite + as-of test.

@@ -46,6 +46,31 @@ packages and make no live NYC API request. You can select a separate path, e.g.
 with `make demo-dashboard`. `make demo-load` and `make demo-build` run the steps
 separately. `make lint` and `make test` run the local checks.
 
+## Offline continuous integration
+
+The [offline CI workflow](.github/workflows/offline-ci.yml) runs on pushes, pull
+requests and manual dispatch. It uses a macOS ARM runner with Python 3.13.5,
+installs `requirements-lock.txt`, runs Ruff and the Python suite, then builds and
+replays the synthetic dbt project in a temporary database. The verifier checks the
+fixture's status reversal and agency reassignment and confirms that replay preserves
+all stored rows and provenance. No NYC API credentials are needed.
+
+Checkout and dependency installation require network access. The subsequent demo
+and checks use synthetic records and mocked API responses; the workflow does not
+provide operating-system network isolation. The checked-out project database, if
+present, is set aside on the temporary runner so it cannot supply the demo. The
+workflow has been checked locally; its first GitHub-hosted run remains pending.
+
+To reproduce its data checks locally with an isolated database:
+
+```bash
+make lint
+make test
+demo_dir="$(mktemp -d)"
+make demo "DEMO_DATABASE=$demo_dir/nyc_open_data.db"
+.venv/bin/python scripts/verify_synthetic_replay.py "$demo_dir/nyc_open_data.db"
+```
+
 ## Streamlit dashboard
 
 With `.venv` activated, from the repository root:

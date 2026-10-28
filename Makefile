@@ -24,7 +24,7 @@ demo-dashboard:
 	"$$NYC311_DEMO_PYTHON" -m streamlit run dashboard/app.py --server.address 127.0.0.1 --browser.gatherUsageStats false
 
 lint:
-	"$$NYC311_DEMO_PYTHON" -m ruff check dashboard ingestion tests
+	"$$NYC311_DEMO_PYTHON" -m ruff check dashboard ingestion tests scripts
 
 test:
 	"$$NYC311_DEMO_PYTHON" -m pytest -q tests
